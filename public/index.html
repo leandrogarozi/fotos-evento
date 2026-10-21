@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Garanta suas fotos</title><link rel="stylesheet" href="style.css">
+</head><body><div class="wrap">
+<div class="brand"><i></i><span id="ev">Fotos do evento</span></div>
+<div class="hero">
+  <h1>Garanta <em>suas fotos</em></h1>
+  <p>Pré-venda: todas as suas fotos do campeonato, em alta qualidade, sem marca d'água, por um preço especial. Assim que eu publicar, o download libera sozinho nesta mesma página.</p>
+</div>
+<div class="card" id="card"><p class="muted">Carregando...</p></div>
+<p class="muted" style="font-size:13px;margin-top:18px;text-align:center" id="count"></p>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const reais = (c) => 'R$ ' + (c / 100).toFixed(2).replace('.', ',').replace(',00', '');
+let ev;
+function tick() {
+  if (!ev || !ev.presale) return;
+  const ms = Date.parse(ev.presaleEnd) - Date.now();
+  if (ms <= 0) { location.reload(); return; }
+  const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
+  $('count').textContent = `Pré-venda termina em ${d ? d + 'd ' : ''}${h}h ${m}min`;
+}
+fetch('/api/event').then(r => r.json()).then(e => {
+  ev = e; $('ev').textContent = e.eventName; document.title = 'Fotos — ' + e.eventName;
+  if (!e.presale) {
+    $('card').innerHTML = '<h2>A pré-venda terminou</h2><p class="muted">As fotos serão publicadas em breve. Fique de olho no WhatsApp!</p>';
+    return;
+  }
+  const groups = {};
+  e.athletes.forEach(a => (groups[a.turma || 'Outros'] = groups[a.turma || 'Outros'] || []).push(a));
+  const opts = Object.keys(groups).map(t => `<optgroup label="Turma ${t}">` +
+    groups[t].map(a => `<option value="${a.id}">${a.name.replace(/</g, '&lt;')}</option>`).join('') + '</optgroup>').join('');
+  $('card').innerHTML = `
+    <div class="muted" style="font-size:13px">Pacote completo, todas as fotos do atleta</div>
+    <div class="price">${reais(e.allPrice)}</div>
+    ${e.deadline.until ? `<div class="muted" style="font-size:13px">Depois da pré-venda: ${reais(e.deadline.next)}</div>` : ''}
+    <form id="f" style="margin-top:18px">
+      <label>Atleta (de quem são as fotos)</label>
+      <select id="athlete" required><option value="">Escolha o nome...</option>${opts}</select>
+      <label>Seu nome</label><input id="name" required autocomplete="name">
+      <label>Seu WhatsApp (com DDD)</label><input id="wpp" type="tel" inputmode="tel" required autocomplete="tel" placeholder="27 99999-9999">
+      <label>E-mail (opcional)</label><input id="email" type="email" autocomplete="email">
+      <button class="full" id="go">Pagar com Pix ou cartão</button>
+      <div class="err" id="err"></div>
+    </form>`;
+  $('f').addEventListener('submit', async (x) => {
+    x.preventDefault(); $('err').textContent = ''; $('go').disabled = true; $('go').textContent = 'Abrindo pagamento...';
+    try {
+      const r = await fetch('/api/presale', { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ athleteId: $('athlete').value, name: $('name').value, whatsapp: $('wpp').value, email: $('email').value }) });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error || 'Erro');
+      try { localStorage.setItem('pedido', d.token); } catch (_) {}
+      location.href = d.url;
+    } catch (err) { $('err').textContent = err.message; $('go').disabled = false; $('go').textContent = 'Pagar com Pix ou cartão'; }
+  });
+  tick(); setInterval(tick, 30000);
+}).catch(() => { $('card').innerHTML = '<p class="err">Não consegui carregar. Recarregue a página.</p>'; });
+</script></body></html>

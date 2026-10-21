@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>Painel</title><link rel="stylesheet" href="style.css">
+<style>.wrap{max-width:900px}.tabs{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}.tabs button{background:var(--surface);color:var(--text);border:1px solid var(--border)}.tabs button.on{background:var(--dark);color:#fff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.grid{grid-template-columns:1fr}}</style>
+</head><body><div class="wrap">
+<h1>Painel <em>administrativo</em></h1>
+<div class="card" id="login"><label>Senha</label><input id="pw" type="password"><button class="full" id="ok">Entrar</button><div class="err" id="lerr"></div></div>
+<div id="app" style="display:none">
+  <div class="tabs"><button data-t="orders" class="on">Pedidos</button><button data-t="config">Preços e datas</button><button data-t="athletes">Atletas</button><button data-t="link">Link e QR</button></div>
+  <div class="card" id="orders"></div>
+  <div class="card" id="config" style="display:none"></div>
+  <div class="card" id="athletes" style="display:none"></div>
+  <div class="card" id="link" style="display:none"></div>
+</div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const reais = (c) => 'R$ ' + (c / 100).toFixed(2).replace('.', ',').replace(',00', '');
+let tok = ''; try { tok = sessionStorage.getItem('adm') || ''; } catch (_) {}
+const api = async (path, body) => {
+  const r = await fetch('/api/admin/' + path, { method: body ? 'POST' : 'GET', headers: { authorization: 'Bearer ' + tok, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 401) { tok = ''; throw new Error('401'); }
+  const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Erro'); return d;
+};
+async function enter() { $('login').style.display = 'none'; $('app').style.display = 'block'; await Promise.all([lo(), lc(), la(), ll()]); }
+$('ok').onclick = async () => {
+  try {
+    const r = await fetch('/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: $('pw').value }) });
+    const d = await r.json(); if (!r.ok) throw new Error(d.error);
+    tok = d.token; try { sessionStorage.setItem('adm', tok); } catch (_) {} enter();
+  } catch (e) { $('lerr').textContent = e.message; }
+};
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
+  ['orders', 'config', 'athletes', 'link'].forEach(id => $(id).style.display = id === b.dataset.t ? '' : 'none');
+});
+async function lo() {
+  const d = await api('orders');
+  const pre = d.orders.filter(o => o.presale);
+  $('orders').innerHTML = `<div class="row" style="justify-content:space-between"><h2 style="margin:0">Total vendido: ${reais(d.totalCents)}</h2><button class="ghost small" onclick="lo()">Atualizar</button></div>
+    <p class="muted" style="font-size:13px;margin:4px 0 12px">${d.orders.filter(o => o.status !== 'aguardando').length} pago(s) · ${pre.length} na pré-venda</p>
+    <div style="overflow-x:auto"><table><tr><th>Atleta</th><th>Comprador</th><th>Valor</th><th>Status</th><th></th></tr>` +
+    (d.orders.map(o => `<tr><td>${esc(o.athlete_name)}${o.presale ? ' <span class="pill">pré</span>' : ''}</td>
+      <td>${esc(o.buyer_name)}<br><a href="https://wa.me/${esc(o.whatsapp)}" target="_blank" class="muted">${esc(o.whatsapp)}</a></td>
+      <td>${reais(o.amount_cents)}</td><td><span class="pill ${o.status}">${o.status}${o.manual ? ' (manual)' : ''}</span></td>
+      <td>${o.status === 'aguardando' ? `<button class="small ghost" onclick="act('${o.id}','verificar')">Verificar</button> <button class="small" onclick="if(confirm('Liberar sem confirmação do Mercado Pago?'))act('${o.id}','liberar')">Liberar</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Nenhum pedido ainda.</td></tr>') + '</table></div>';
+}
+async function act(id, action) { try { await api('orders', { id, action }); lo(); } catch (e) { alert(e.message); } }
+const LABELS = { event_name: 'Nome do evento', event_date: 'Data do evento (AAAA-MM-DD)', whatsapp: 'Seu WhatsApp (com 55)', presale_end: 'Fim da pré-venda (ISO, ex.: 2026-10-24T02:59:59Z = sex 23h59)', presale_price_cents: 'Pacote "todas" na pré-venda (centavos)', price_one_cents: '1 foto (centavos)', price_four_cents: '4 fotos (centavos)', price_all_event_cents: 'Pacote "todas" após a pré-venda (centavos)', price_all_late_cents: 'Pacote "todas" depois do prazo (centavos)', published_at: 'Fotos publicadas em (ISO; começa a contar o prazo)', late_after_days: 'Dias até subir pro preço final', price_box_cents: 'Pacote do box (centavos)' };
+async function lc() {
+  const c = await api('config');
+  $('config').innerHTML = '<h2>Preços e datas</h2><p class="muted" style="font-size:13px;margin-bottom:12px">Para testar com R$ 1, ponha 100 em "Pacote todas na pré-venda" e depois volte para 5000.</p><div class="grid">' +
+    Object.keys(LABELS).map(k => `<div><label>${LABELS[k]}</label><input data-k="${k}" value="${esc(c[k])}"></div>`).join('') +
+    '</div><button class="full" id="sv">Salvar</button><div class="err" id="cerr"></div>';
+  $('sv').onclick = async () => { const b = {}; document.querySelectorAll('#config [data-k]').forEach(i => b[i.dataset.k] = i.value); try { await api('config', b); $('cerr').style.color = 'var(--ok)'; $('cerr').textContent = 'Salvo.'; } catch (e) { $('cerr').textContent = e.message; } };
+}
+async function la() {
+  const d = await api('athletes');
+  $('athletes').innerHTML = '<h2>Atletas</h2><div class="row" style="margin-bottom:14px"><input id="an" placeholder="Nome" style="flex:2"><input id="at" placeholder="Turma" style="flex:1"><button class="small" id="aadd">Adicionar</button></div>' +
+    '<table>' + d.athletes.map(a => `<tr><td>${esc(a.name)} <span class="muted">${esc(a.turma)}</span></td><td style="text-align:right"><button class="small ghost" onclick="tg(${a.id},${a.active ? 0 : 1})">${a.active ? 'Tirar da lista' : 'Voltar pra lista'}</button></td></tr>`).join('') + '</table>';
+  $('aadd').onclick = async () => { try { await api('athletes', { action: 'add', name: $('an').value, turma: $('at').value }); la(); } catch (e) { alert(e.message); } };
+}
+async function tg(id, active) { await api('athletes', { action: 'toggle', id, active }); la(); }
+function ll() {
+  const url = location.origin + '/';
+  $('link').innerHTML = `<h2>Link e QR</h2><input readonly value="${url}" onclick="this.select()"><div class="row" style="margin-top:12px"><button class="small" onclick="navigator.clipboard.writeText('${url}').then(()=>this.textContent='Copiado!')">Copiar link</button></div>
+    <img alt="QR code" style="margin-top:16px;width:220px;height:220px" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}">`;
+}
+if (tok) enter().catch(() => { $('login').style.display = ''; $('app').style.display = 'none'; });
+</script></body></html>

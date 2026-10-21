@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seu pedido</title><link rel="stylesheet" href="style.css">
+</head><body><div class="wrap">
+<div class="brand"><i></i><span>Seu pedido</span></div>
+<div class="card" id="c"><p class="muted">Carregando...</p></div>
+<p class="muted" style="font-size:13px;margin-top:16px;text-align:center">Guarde este link: é por ele que você volta pra baixar suas fotos.</p>
+</div>
+<script>
+const t = new URLSearchParams(location.search).get('t');
+const $ = (id) => document.getElementById(id);
+const reais = (c) => 'R$ ' + (c / 100).toFixed(2).replace('.', ',').replace(',00', '');
+const esc = (s) => String(s).replace(/</g, '&lt;');
+let tries = 0;
+async function load(sync) {
+  const r = await fetch('/api/pedido/' + encodeURIComponent(t) + (sync ? '?sync=1' : ''));
+  if (!r.ok) { $('c').innerHTML = '<h2>Pedido não encontrado</h2><p class="muted">Confira o link que você recebeu.</p>'; return; }
+  const o = await r.json();
+  const head = `<div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(o.athlete)}</h2><span class="pill ${o.status}">${o.status}</span></div>
+    <p class="muted" style="margin-top:6px">Pacote completo · ${reais(o.amount)} · ${esc(o.buyer)}</p>`;
+  if (o.status === 'aguardando') {
+    $('c').innerHTML = head + '<div class="box">Aguardando a confirmação do pagamento. Se você já pagou, aguarde alguns segundos: esta página atualiza sozinha.</div>';
+    if (tries++ < 40) setTimeout(() => load(tries % 3 === 0), 4000);
+  } else if (o.photos && o.photos.length) {
+    $('c').innerHTML = head + '<p style="margin-top:14px">Suas fotos estão prontas.</p>';
+  } else {
+    $('c').innerHTML = head + '<div class="box">Pagamento confirmado! Assim que eu publicar as fotos, o download libera sozinho aqui. Volte neste link depois do evento.</div>';
+  }
+}
+if (!t) $('c').innerHTML = '<h2>Link inválido</h2>'; else load(true);
+</script></body></html>
