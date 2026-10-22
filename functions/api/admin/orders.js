@@ -7,7 +7,8 @@ export async function onRequestGet({ request, env }) {
   if (!(await isAdmin(request, env))) return denied();
   const { results } = await env.DB.prepare(
     `SELECT o.id, o.token, o.buyer_name, o.whatsapp, o.email, o.kind, o.amount_cents, o.status, o.presale,
-            o.created_at, o.paid_at, o.manual, a.name AS athlete_name
+            o.created_at, o.paid_at, o.manual, a.name AS athlete_name,
+            (SELECT COUNT(*) FROM order_photos op WHERE op.order_id = o.id) AS n_photos
      FROM orders o LEFT JOIN athletes a ON a.id = o.athlete_id
      WHERE o.status != 'erro' ORDER BY o.created_at DESC`
   ).all();

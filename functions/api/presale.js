@@ -32,7 +32,7 @@ export async function onRequestPost({ request, env }) {
   try {
     const pref = await createPreference(env, {
       order, origin: new URL(request.url).origin,
-      title: `Todas as fotos — ${athlete.name} (${cfg.event_name})`,
+      title: `Todas as fotos: ${athlete.name} (${cfg.event_name})`,
     });
     return json({ token: order.token, url: pref.init_point });
   } catch (e) {

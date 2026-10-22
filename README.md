@@ -30,3 +30,16 @@ O webhook sempre confirma o pagamento consultando a API do Mercado Pago com o se
 
 ## Preços e datas
 Tudo no painel → **Preços e datas** (valores em centavos). Para teste de R$ 1: pré-venda = `100`, depois volte para `5000`.
+
+## Fase 2: loja (galeria, carrinho, download)
+
+Código na branch `loja`. Antes de juntar na `main`:
+
+1. **Banco:** no D1 → Console, rode `migrations/0003_fotos.sql`.
+2. **Fotos (R2):** Armazenamento e bancos de dados → **R2** → Criar bucket `fotos-evento` (privado). No projeto Pages → Configurações → Bindings → Adicionar → **R2 bucket**: variável `FOTOS`, bucket `fotos-evento`.
+3. **Novo deploy** (Implantações → Retry) para valer o binding.
+4. *(Opcional)* Marca d'água em PNG transparente: salve como `public/marca.png` no repositório. Sem ele, usa o texto "Texto da marca d'água" (painel → Preços e datas).
+
+Fluxo: painel → aba **Fotos** → marque os atletas → envie os JPGs (ou uma pasta por atleta). A vitrine (1200 px, ~70%, marca d'água) é gerada no navegador; a original sobe privada pro R2 e só sai por link assinado de pedido pago (7 dias). Quem comprou o pacote "todas" na pré-venda recebe as fotos assim que elas sobem.
+
+Limites do plano grátis: o ZIP é montado no celular/computador do comprador (sem custo de servidor); em pacotes muito grandes no 4G, o download foto a foto é mais seguro.

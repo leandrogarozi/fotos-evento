@@ -56,7 +56,9 @@ export function allPriceDeadline(cfg, now = Date.now()) {
 }
 
 // Menor preço para n fotos de um atleta, combinando 1 foto, pacote de 4 e "todas".
-export function cartPrice(n, cfg, now = Date.now()) {
+// opts.allowAll=false: galeria geral (sem atleta), onde não existe pacote "todas".
+export function cartPrice(n, cfg, now = Date.now(), opts = {}) {
+  const allowAll = opts.allowAll !== false;
   const p1 = cfg.price_one_cents, p4 = cfg.price_four_cents, pAll = allPrice(cfg, now);
   if (!n || n < 1) return { total: 0, kind: 'none', freeExtra: 0, upsell: null, allPrice: pAll };
   let best = { total: Infinity, fours: 0 };
@@ -65,12 +67,12 @@ export function cartPrice(n, cfg, now = Date.now()) {
     const total = k * p4 + rest * p1;
     if (total < best.total) best = { total, fours: k };
   }
-  if (pAll <= best.total) {
+  if (allowAll && pAll <= best.total) {
     return { total: pAll, kind: 'all', freeExtra: 0, upsell: null, allPrice: pAll };
   }
   const covered = best.fours * 4 + Math.max(0, n - best.fours * 4);
   const freeExtra = Math.max(0, covered - n);
-  const upsell = n >= 2 ? { extra: pAll - best.total, price: pAll } : null;
+  const upsell = allowAll && n >= 2 ? { extra: pAll - best.total, price: pAll } : null;
   return { total: best.total, kind: best.fours ? 'four' : 'unit', freeExtra, upsell, allPrice: pAll };
 }
 

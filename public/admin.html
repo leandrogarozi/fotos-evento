@@ -7,9 +7,10 @@
 <h1>Painel <em>administrativo</em></h1>
 <div class="card" id="login"><label>Senha</label><input id="pw" type="password"><button class="full" id="ok">Entrar</button><div class="err" id="lerr"></div></div>
 <div id="app" style="display:none">
-  <div class="tabs"><button data-t="orders" class="on">Pedidos</button><button data-t="config">Preços e datas</button><button data-t="athletes">Atletas</button><button data-t="link">Link e QR</button></div>
+  <div class="tabs"><button data-t="orders" class="on">Pedidos</button><button data-t="config">Preços e datas</button><button data-t="photos">Fotos</button><button data-t="athletes">Atletas</button><button data-t="link">Link e QR</button></div>
   <div class="card" id="orders"></div>
   <div class="card" id="config" style="display:none"></div>
+  <div class="card" id="photos" style="display:none"></div>
   <div class="card" id="athletes" style="display:none"></div>
   <div class="card" id="link" style="display:none"></div>
 </div>
@@ -24,7 +25,7 @@ const api = async (path, body) => {
   if (r.status === 401) { tok = ''; throw new Error('401'); }
   const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Erro'); return d;
 };
-async function enter() { $('login').style.display = 'none'; $('app').style.display = 'block'; await Promise.all([lo(), lc(), la(), ll()]); }
+async function enter() { $('login').style.display = 'none'; $('app').style.display = 'block'; await Promise.all([lo(), lc(), la(), ll(), lp()]); }
 $('ok').onclick = async () => {
   try {
     const r = await fetch('/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: $('pw').value }) });
@@ -34,7 +35,7 @@ $('ok').onclick = async () => {
 };
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  ['orders', 'config', 'athletes', 'link'].forEach(id => $(id).style.display = id === b.dataset.t ? '' : 'none');
+  ['orders', 'config', 'photos', 'athletes', 'link'].forEach(id => $(id).style.display = id === b.dataset.t ? '' : 'none');
 });
 async function lo() {
   const d = await api('orders');
@@ -42,13 +43,13 @@ async function lo() {
   $('orders').innerHTML = `<div class="row" style="justify-content:space-between"><h2 style="margin:0">Total vendido: ${reais(d.totalCents)}</h2><button class="ghost small" onclick="lo()">Atualizar</button></div>
     <p class="muted" style="font-size:13px;margin:4px 0 12px">${d.orders.filter(o => o.status !== 'aguardando').length} pago(s) · ${pre.length} na pré-venda</p>
     <div style="overflow-x:auto"><table><tr><th>Atleta</th><th>Comprador</th><th>Valor</th><th>Status</th><th></th></tr>` +
-    (d.orders.map(o => `<tr><td>${esc(o.athlete_name)}${o.presale ? ' <span class="pill">pré</span>' : ''}</td>
+    (d.orders.map(o => `<tr><td>${o.athlete_name ? esc(o.athlete_name) : 'Fotos avulsas'}${o.kind === 'fotos' ? ' <span class="pill">' + o.n_photos + ' foto' + (o.n_photos > 1 ? 's' : '') + '</span>' : ''}${o.presale ? ' <span class="pill">pré</span>' : ''}</td>
       <td>${esc(o.buyer_name)}<br><a href="https://wa.me/${esc(o.whatsapp)}" target="_blank" class="muted">${esc(o.whatsapp)}</a></td>
       <td>${reais(o.amount_cents)}</td><td><span class="pill ${o.status}">${o.status}${o.manual ? ' (manual)' : ''}</span></td>
       <td>${o.status === 'aguardando' ? `<button class="small ghost" onclick="act('${o.id}','verificar')">Verificar</button> <button class="small" onclick="if(confirm('Liberar sem confirmação do Mercado Pago?'))act('${o.id}','liberar')">Liberar</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">Nenhum pedido ainda.</td></tr>') + '</table></div>';
 }
 async function act(id, action) { try { await api('orders', { id, action }); lo(); } catch (e) { alert(e.message); } }
-const LABELS = { event_name: 'Nome do evento', event_date: 'Data do evento (AAAA-MM-DD)', whatsapp: 'Seu WhatsApp (com 55)', presale_end: 'Fim da pré-venda (ISO, ex.: 2026-10-24T02:59:59Z = sex 23h59)', presale_price_cents: 'Pacote "todas" na pré-venda (centavos)', price_one_cents: '1 foto (centavos)', price_four_cents: '4 fotos (centavos)', price_all_event_cents: 'Pacote "todas" após a pré-venda (centavos)', price_all_late_cents: 'Pacote "todas" depois do prazo (centavos)', published_at: 'Fotos publicadas em (ISO; começa a contar o prazo)', late_after_days: 'Dias até subir pro preço final', price_box_cents: 'Pacote do box (centavos)' };
+const LABELS = { event_name: 'Nome do evento', brand_text: 'Texto da marca d\'água', event_date: 'Data do evento (AAAA-MM-DD)', whatsapp: 'Seu WhatsApp (com 55)', presale_end: 'Fim da pré-venda (ISO, ex.: 2026-10-24T02:59:59Z = sex 23h59)', presale_price_cents: 'Pacote "todas" na pré-venda (centavos)', price_one_cents: '1 foto (centavos)', price_four_cents: '4 fotos (centavos)', price_all_event_cents: 'Pacote "todas" após a pré-venda (centavos)', price_all_late_cents: 'Pacote "todas" depois do prazo (centavos)', published_at: 'Fotos publicadas em (ISO; começa a contar o prazo)', late_after_days: 'Dias até subir pro preço final', price_box_cents: 'Pacote do box (centavos)' };
 async function lc() {
   const c = await api('config');
   $('config').innerHTML = '<h2>Preços e datas</h2><p class="muted" style="font-size:13px;margin-bottom:12px">Para testar com R$ 1, ponha 100 em "Pacote todas na pré-venda" e depois volte para 5000.</p><div class="grid">' +
@@ -68,5 +69,79 @@ function ll() {
   $('link').innerHTML = `<h2>Link e QR</h2><input readonly value="${url}" onclick="this.select()"><div class="row" style="margin-top:12px"><button class="small" onclick="navigator.clipboard.writeText('${url}').then(()=>this.textContent='Copiado!')">Copiar link</button></div>
     <img alt="QR code" style="margin-top:16px;width:220px;height:220px" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}">`;
 }
+
+// ---------- Fotos: upload com marca d'água gerada aqui no navegador ----------
+const norm = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+let athletesCache = [], brandText = 'Leandro Garozi Fotografia';
+async function lp() {
+  const [d, ev] = await Promise.all([api('photos'), fetch('/api/event').then(r => r.json()).catch(() => ({}))]);
+  athletesCache = d.athletes; if (ev.brandText) brandText = ev.brandText;
+  $('photos').innerHTML = `<h2>Fotos (${d.total} publicadas)</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:14px">Escolha de quem são as fotos e envie os JPGs editados. A original fica privada e a vitrine sai com marca d'água no meio. Uma foto pode ter mais de um atleta: marque todos.</p>
+    <label>Atletas desta leva</label>
+    <div style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:14px;padding:8px 12px;background:var(--paper)">` +
+      d.athletes.map(a => `<label style="display:flex;gap:10px;align-items:center;margin:0;padding:5px 0;color:var(--ink)"><input type="checkbox" class="pa" value="${a.id}"> ${esc(a.name)} <span class="muted" style="margin-left:auto;font-size:12px">${a.n} foto${a.n === 1 ? '' : 's'}</span></label>`).join('') + `</div>
+    <label>Arquivos JPG</label><input type="file" id="files" accept="image/jpeg" multiple>
+    <label>Ou uma pasta por atleta (o nome da pasta tem que ser o nome do atleta; use " + " para dois atletas)</label><input type="file" id="folder" webkitdirectory multiple>
+    <button class="full" id="up">Enviar fotos</button>
+    <div id="uplog" class="muted" style="font-size:13px;margin-top:12px;white-space:pre-line"></div>`;
+  $('up').onclick = startUpload;
+}
+let logoImg;
+async function loadLogo() {
+  if (logoImg !== undefined) return logoImg;
+  try { const r = await fetch('/marca.png'); if (r.ok && (r.headers.get('content-type') || '').startsWith('image/')) { logoImg = await createImageBitmap(await r.blob()); return logoImg; } } catch (_) {}
+  return (logoImg = null);
+}
+async function makePreview(file) {
+  const bmp = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  const scale = Math.min(1, 1200 / Math.max(bmp.width, bmp.height));
+  const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d'); g.drawImage(bmp, 0, 0, w, h);
+  const logo = await loadLogo();
+  g.save(); g.translate(w / 2, h / 2); g.rotate(-Math.PI / 7);
+  const diag = Math.hypot(w, h);
+  if (logo) {
+    const lw = w * 0.26, lh = lw * logo.height / logo.width; g.globalAlpha = 0.4;
+    for (let y = -diag, r = 0; y < diag; y += lh * 3.2, r++) for (let x = -diag + (r % 2) * lw * 0.9; x < diag; x += lw * 1.8) g.drawImage(logo, x, y, lw, lh);
+  } else {
+    const fs = Math.max(18, Math.round(w * 0.05)); g.font = `700 ${fs}px Figtree, Arial, sans-serif`;
+    g.fillStyle = 'rgba(255,255,255,0.45)'; g.shadowColor = 'rgba(0,0,0,0.4)'; g.shadowBlur = 5; g.textBaseline = 'middle';
+    const tw = g.measureText(brandText).width;
+    for (let y = -diag, r = 0; y < diag; y += fs * 4, r++) for (let x = -diag + (r % 2) * tw * 0.6; x < diag; x += tw * 1.5) g.fillText(brandText, x, y);
+  }
+  g.restore(); bmp.close && bmp.close();
+  return new Promise(res => c.toBlob(res, 'image/jpeg', 0.7));
+}
+const put = async (id, kind, body) => {
+  const r = await fetch(`/api/admin/photo/${id}/${kind}`, { method: 'PUT', headers: { authorization: 'Bearer ' + tok, 'content-type': 'image/jpeg' }, body });
+  if (!r.ok) throw new Error('falha ao enviar ' + kind);
+};
+async function sendOne(file, athleteIds) {
+  const prev = await makePreview(file);
+  const { id } = await api('photo', { filename: file.name, athleteIds });
+  try { await put(id, 'prev', prev); await put(id, 'orig', file); }
+  catch (e) { await fetch('/api/admin/photo/' + id, { method: 'DELETE', headers: { authorization: 'Bearer ' + tok } }); throw e; }
+}
+async function startUpload() {
+  const checked = [...document.querySelectorAll('.pa:checked')].map(i => Number(i.value));
+  const jobs = [], skipped = [];
+  [...$('files').files].forEach(f => checked.length ? jobs.push({ f, ids: checked }) : skipped.push(f.name + ' (marque um atleta)'));
+  [...$('folder').files].filter(f => /image\/jpeg/.test(f.type)).forEach(f => {
+    const parts = (f.webkitRelativePath || '').split('/'); const folder = parts[parts.length - 2] || '';
+    const ids = folder.split('+').map(n => athletesCache.find(a => norm(a.name) === norm(n))).filter(Boolean).map(a => a.id);
+    ids.length ? jobs.push({ f, ids }) : skipped.push(f.webkitRelativePath + ' (pasta não bate com nenhum atleta)');
+  });
+  const log = $('uplog'); if (!jobs.length) { log.textContent = 'Nada para enviar.\n' + skipped.join('\n'); return; }
+  $('up').disabled = true; let done = 0; const fails = [];
+  const q = jobs.slice();
+  const worker = async () => { while (q.length) { const j = q.shift(); log.textContent = `Enviando ${done + fails.length + 1} de ${jobs.length}: ${j.f.name}`;
+    try { await sendOne(j.f, j.ids); } catch (e) { try { await sendOne(j.f, j.ids); } catch (e2) { fails.push(j.f.name); continue; } } done++; } };
+  await Promise.all([worker(), worker()]);
+  log.textContent = `Pronto: ${done} enviada(s).` + (fails.length ? `\nFalharam: ${fails.join(', ')}` : '') + (skipped.length ? `\nIgnoradas:\n${skipped.join('\n')}` : '');
+  $('up').disabled = false; lp().then(() => { $('uplog').textContent = log.textContent; });
+}
+
 if (tok) enter().catch(() => { $('login').style.display = ''; $('app').style.display = 'none'; });
 </script></body></html>

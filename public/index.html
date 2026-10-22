@@ -1,61 +1,84 @@
 <!DOCTYPE html>
 <html lang="pt-BR"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Garanta suas fotos</title><link rel="stylesheet" href="style.css">
-</head><body><div class="wrap">
-<div class="brand"><i></i><span id="ev">Fotos do evento</span></div>
-<div class="hero">
-  <h1>Garanta <em>suas fotos</em></h1>
-  <p>Pré-venda: todas as suas fotos do campeonato, em alta qualidade, sem marca d'água, por um preço especial. Assim que eu publicar, o download libera sozinho nesta mesma página.</p>
-</div>
-<div class="card" id="card"><p class="muted">Carregando...</p></div>
-<p class="muted" style="font-size:13px;margin-top:18px;text-align:center" id="count"></p>
-</div>
+<title>Fotos do evento</title><link rel="stylesheet" href="style.css">
+</head><body>
+<div class="top wrap" style="padding-bottom:0"><span class="logo">LEANDRO GAROZI</span></div>
+<div class="wrap" id="root"><p class="muted" style="margin-top:40px">Carregando...</p></div>
 <script>
 const $ = (id) => document.getElementById(id);
 const reais = (c) => 'R$ ' + (c / 100).toFixed(2).replace('.', ',').replace(',00', '');
-let ev;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (iso) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).replace(',', ' às');
+let ev, until;
 function tick() {
-  if (!ev || !ev.presale) return;
-  const ms = Date.parse(ev.presaleEnd) - Date.now();
+  const el = $('count'); if (!el || !until) return;
+  const ms = Date.parse(until) - Date.now();
   if (ms <= 0) { location.reload(); return; }
   const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
-  $('count').textContent = `Pré-venda termina em ${d ? d + 'd ' : ''}${h}h ${m}min`;
+  el.textContent = `Termina em ${d ? d + 'd ' : ''}${h}h ${m}min`;
 }
-fetch('/api/event').then(r => r.json()).then(e => {
-  ev = e; $('ev').textContent = e.eventName; document.title = 'Fotos — ' + e.eventName;
-  if (!e.presale) {
-    $('card').innerHTML = '<h2>A pré-venda terminou</h2><p class="muted">As fotos serão publicadas em breve. Fique de olho no WhatsApp!</p>';
-    return;
-  }
-  const groups = {};
-  e.athletes.forEach(a => (groups[a.turma || 'Outros'] = groups[a.turma || 'Outros'] || []).push(a));
-  const opts = Object.keys(groups).map(t => `<optgroup label="Turma ${t}">` +
-    groups[t].map(a => `<option value="${a.id}">${a.name.replace(/</g, '&lt;')}</option>`).join('') + '</optgroup>').join('');
-  $('card').innerHTML = `
-    <div class="muted" style="font-size:13px">Pacote completo, todas as fotos do atleta</div>
-    <div class="price">${reais(e.allPrice)}</div>
-    ${e.deadline.until ? `<div class="muted" style="font-size:13px">Depois da pré-venda: ${reais(e.deadline.next)}</div>` : ''}
-    <form id="f" style="margin-top:18px">
-      <label>Atleta (de quem são as fotos)</label>
-      <select id="athlete" required><option value="">Escolha o nome...</option>${opts}</select>
-      <label>Seu nome</label><input id="name" required autocomplete="name">
-      <label>Seu WhatsApp (com DDD)</label><input id="wpp" type="tel" inputmode="tel" required autocomplete="tel" placeholder="27 99999-9999">
-      <label>E-mail (opcional)</label><input id="email" type="email" autocomplete="email">
-      <button class="full" id="go">Pagar com Pix ou cartão</button>
-      <div class="err" id="err"></div>
-    </form>`;
+const options = (e) => {
+  const g = {}; e.athletes.forEach((a) => (g[a.turma || 'Outros'] = g[a.turma || 'Outros'] || []).push(a));
+  return Object.keys(g).map((t) => `<optgroup label="Turma ${esc(t)}">${g[t].map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</optgroup>`).join('');
+};
+function presaleView(e) {
+  $('root').innerHTML = `
+    <div class="eyebrow">${esc(e.eventName)}</div>
+    <h1>Garanta <em>suas fotos</em></h1>
+    <p class="lead">Pré-venda: todas as suas fotos do campeonato, em alta qualidade e sem marca d'água, por um preço especial. Quando eu publicar, o download libera sozinho nesta mesma página.</p>
+    <div class="card">
+      <div class="muted" style="font-size:14px">Pacote completo, todas as fotos do atleta</div>
+      <div class="price">${reais(e.allPrice)}</div>
+      <div class="row" style="margin-top:6px"><span class="chip" id="count"></span><span class="muted" style="font-size:13px">Depois: ${reais(e.deadline.next)}</span></div>
+      <form id="f" style="margin-top:22px">
+        <label>De quem são as fotos</label>
+        <select id="athlete" required><option value="">Escolha o nome do atleta</option>${options(e)}</select>
+        <label>Seu nome</label><input id="name" required autocomplete="name">
+        <label>Seu WhatsApp (com DDD)</label><input id="wpp" type="tel" inputmode="tel" required autocomplete="tel" placeholder="27 99999-9999">
+        <label>E-mail (opcional)</label><input id="email" type="email" autocomplete="email">
+        <button class="go full" id="go">Pagar com Pix ou cartão</button>
+        <div class="err" id="err"></div>
+      </form>
+    </div>`;
+  until = e.presaleEnd; tick();
   $('f').addEventListener('submit', async (x) => {
-    x.preventDefault(); $('err').textContent = ''; $('go').disabled = true; $('go').textContent = 'Abrindo pagamento...';
+    x.preventDefault(); $('err').textContent = ''; $('go').disabled = true;
     try {
       const r = await fetch('/api/presale', { method: 'POST', headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ athleteId: $('athlete').value, name: $('name').value, whatsapp: $('wpp').value, email: $('email').value }) });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || 'Erro');
-      try { localStorage.setItem('pedido', d.token); } catch (_) {}
+      const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Erro');
       location.href = d.url;
-    } catch (err) { $('err').textContent = err.message; $('go').disabled = false; $('go').textContent = 'Pagar com Pix ou cartão'; }
+    } catch (err) { $('err').textContent = err.message; $('go').disabled = false; }
   });
-  tick(); setInterval(tick, 30000);
-}).catch(() => { $('card').innerHTML = '<p class="err">Não consegui carregar. Recarregue a página.</p>'; });
+}
+function storeView(e) {
+  const dl = e.deadline;
+  $('root').innerHTML = `
+    <div class="eyebrow">${esc(e.eventName)}</div>
+    <h1>Encontre <em>suas fotos</em></h1>
+    <p class="lead">Escolha seu nome, veja as fotos do campeonato e leve as suas em alta qualidade, sem marca d'água.</p>
+    <div class="card">
+      <label>Seu nome na lista</label>
+      <select id="athlete"><option value="">Escolha o atleta</option>${options(e)}</select>
+      <button class="go full" id="see">Ver minhas fotos</button>
+      <a class="btn light full" style="width:100%;margin-top:12px" href="galeria.html">Ver todas as fotos</a>
+    </div>
+    <div class="card" style="background:var(--card2);border:0">
+      <h2>Quanto custa</h2>
+      <div class="prices">
+        <div><span>1 foto</span><b>${reais(e.prices.one)}</b></div>
+        <div><span>4 fotos</span><b>${reais(e.prices.four)}</b></div>
+        <div><span>Todas as fotos do atleta</span><b>${reais(e.allPrice)}</b></div>
+      </div>
+      ${dl.until ? `<div class="box sage">Pacote completo por ${reais(e.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}. <span id="count" class="chip" style="margin-left:6px"></span></div>` : ''}
+    </div>`;
+  until = dl.until; tick();
+  $('see').onclick = () => { const a = $('athlete').value; if (a) location.href = 'galeria.html?a=' + a; else $('athlete').focus(); };
+}
+fetch('/api/event').then((r) => r.json()).then((e) => {
+  ev = e; document.title = 'Fotos: ' + e.eventName;
+  e.presale ? presaleView(e) : storeView(e);
+  setInterval(tick, 30000);
+}).catch(() => { $('root').innerHTML = '<p class="err" style="margin-top:40px">Não consegui carregar. Recarregue a página.</p>'; });
 </script></body></html>

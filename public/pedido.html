@@ -2,31 +2,66 @@
 <html lang="pt-BR"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Seu pedido</title><link rel="stylesheet" href="style.css">
-</head><body><div class="wrap">
-<div class="brand"><i></i><span>Seu pedido</span></div>
-<div class="card" id="c"><p class="muted">Carregando...</p></div>
-<p class="muted" style="font-size:13px;margin-top:16px;text-align:center">Guarde este link: é por ele que você volta pra baixar suas fotos.</p>
-</div>
+<style>
+.dgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:20px}
+@media(min-width:700px){.dgrid{grid-template-columns:repeat(3,1fr)}}
+.dl{background:var(--white);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+.dl img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block}
+.dl .b{padding:10px}
+.dl a{width:100%}
+</style></head><body>
+<div class="top wrap" style="padding-bottom:0"><span class="logo">LEANDRO GAROZI</span></div>
+<div class="wrap" id="c" style="max-width:900px"><p class="muted" style="margin-top:40px">Carregando...</p></div>
 <script>
 const t = new URLSearchParams(location.search).get('t');
 const $ = (id) => document.getElementById(id);
 const reais = (c) => 'R$ ' + (c / 100).toFixed(2).replace('.', ',').replace(',00', '');
-const esc = (s) => String(s).replace(/</g, '&lt;');
-let tries = 0;
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let tries = 0, order = null;
+
+// ZIP sem compressão (JPG já é comprimido), montado no navegador.
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+const crc32 = (u8) => { let c = 0xFFFFFFFF; for (let i = 0; i < u8.length; i++) c = CRC[(c ^ u8[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+function zipHeader(fields) { const b = new DataView(new ArrayBuffer(fields.reduce((s, f) => s + f[0], 0))); let o = 0; fields.forEach(([n, v]) => { n === 2 ? b.setUint16(o, v, true) : b.setUint32(o, v, true); o += n; }); return new Uint8Array(b.buffer); }
+async function downloadZip(photos, btn) {
+  const enc = new TextEncoder(), parts = [], central = []; let offset = 0;
+  const d = new Date(), time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1), date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  for (let i = 0; i < photos.length; i++) {
+    btn.textContent = `Preparando ${i + 1} de ${photos.length}...`;
+    const blob = await (await fetch(photos[i].url)).blob();
+    const crc = crc32(new Uint8Array(await blob.arrayBuffer()));
+    const name = enc.encode((photos[i].name || photos[i].id) .replace(/[^\w.\- ]+/g, '_').replace(/(?<!\.jpe?g)$/i, '.jpg'));
+    const local = zipHeader([[4, 0x04034b50], [2, 20], [2, 0x0800], [2, 0], [2, time], [2, date], [4, crc], [4, blob.size], [4, blob.size], [2, name.length], [2, 0]]);
+    parts.push(local, name, blob);
+    central.push(zipHeader([[4, 0x02014b50], [2, 20], [2, 20], [2, 0x0800], [2, 0], [2, time], [2, date], [4, crc], [4, blob.size], [4, blob.size], [2, name.length], [2, 0], [2, 0], [2, 0], [2, 0], [4, 0], [4, offset]]), name);
+    offset += local.length + name.length + blob.size;
+  }
+  const cdSize = central.reduce((s, p) => s + p.length, 0);
+  const end = zipHeader([[4, 0x06054b50], [2, 0], [2, 0], [2, photos.length], [2, photos.length], [4, cdSize], [4, offset], [2, 0]]);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([...parts, ...central, end], { type: 'application/zip' }));
+  a.download = 'fotos.zip'; document.body.appendChild(a); a.click(); a.remove();
+}
+
 async function load(sync) {
   const r = await fetch('/api/pedido/' + encodeURIComponent(t) + (sync ? '?sync=1' : ''));
-  if (!r.ok) { $('c').innerHTML = '<h2>Pedido não encontrado</h2><p class="muted">Confira o link que você recebeu.</p>'; return; }
-  const o = await r.json();
-  const head = `<div class="row" style="justify-content:space-between"><h2 style="margin:0">${esc(o.athlete)}</h2><span class="pill ${o.status}">${o.status}</span></div>
-    <p class="muted" style="margin-top:6px">Pacote completo · ${reais(o.amount)} · ${esc(o.buyer)}</p>`;
+  if (!r.ok) { $('c').innerHTML = '<h1 style="margin-top:40px">Pedido <em>não encontrado</em></h1><p class="lead">Confira o link que você recebeu.</p>'; return; }
+  const o = order = await r.json();
+  const what = o.kind === 'todas' ? 'Pacote completo' : 'Fotos escolhidas';
+  const head = `<div class="eyebrow">Seu pedido <span class="pill ${o.status}" style="margin-left:6px">${o.status}</span></div>
+    <h1>${o.athlete ? esc(o.athlete.split(' ')[0]) + ': ' : ''}<em>${what.toLowerCase()}</em></h1>
+    <p class="lead">${reais(o.amount)} · ${esc(o.buyer)}</p>`;
   if (o.status === 'aguardando') {
-    $('c').innerHTML = head + '<div class="box">Aguardando a confirmação do pagamento. Se você já pagou, aguarde alguns segundos: esta página atualiza sozinha.</div>';
+    $('c').innerHTML = head + '<div class="box">Aguardando a confirmação do pagamento. Se você já pagou, espere alguns segundos: esta página atualiza sozinha.</div>';
     if (tries++ < 40) setTimeout(() => load(tries % 3 === 0), 4000);
-  } else if (o.photos && o.photos.length) {
-    $('c').innerHTML = head + '<p style="margin-top:14px">Suas fotos estão prontas.</p>';
+  } else if (o.photos.length) {
+    $('c').innerHTML = head + `<div class="row" style="margin-top:22px"><button class="go" id="zip">Baixar todas (ZIP)</button><span class="muted" style="font-size:13px">${o.photos.length} foto${o.photos.length > 1 ? 's' : ''} em alta qualidade, sem marca d'água</span></div>
+      <div class="dgrid">${o.photos.map((p) => `<div class="dl"><img src="${p.thumb}" loading="lazy" alt=""><div class="b"><a class="btn light small" href="${p.url}" download>Baixar</a></div></div>`).join('')}</div>
+      <p class="muted" style="font-size:13px;margin-top:22px">Guarde este link: os links de download renovam sempre que você abre esta página.</p>`;
+    $('zip').onclick = async function () { this.disabled = true; try { await downloadZip(o.photos, this); } catch (e) { alert('Não consegui montar o ZIP. Baixe as fotos uma a uma.'); } this.textContent = 'Baixar todas (ZIP)'; this.disabled = false; };
   } else {
-    $('c').innerHTML = head + '<div class="box">Pagamento confirmado! Assim que eu publicar as fotos, o download libera sozinho aqui. Volte neste link depois do evento.</div>';
+    $('c').innerHTML = head + '<div class="box sage">Pagamento confirmado! Assim que eu publicar as suas fotos, o download libera sozinho aqui. Guarde este link e volte depois do evento.</div>';
   }
 }
-if (!t) $('c').innerHTML = '<h2>Link inválido</h2>'; else load(true);
+if (!t) $('c').innerHTML = '<h1 style="margin-top:40px">Link <em>inválido</em></h1>'; else load(true);
 </script></body></html>

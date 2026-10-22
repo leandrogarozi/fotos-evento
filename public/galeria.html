@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Galeria</title><link rel="stylesheet" href="style.css">
+<style>
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:22px}
+@media(min-width:700px){.grid{grid-template-columns:repeat(3,1fr);gap:14px}}
+@media(min-width:1000px){.grid{grid-template-columns:repeat(4,1fr)}}
+.ph{position:relative;aspect-ratio:4/5;border-radius:20px;overflow:hidden;background:var(--card);cursor:pointer}
+.ph img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+.ph.on{outline:3px solid var(--moss);outline-offset:-3px}
+.heart{position:absolute;top:10px;right:10px;width:42px;height:42px;min-height:0;padding:0;border-radius:50%;background:rgba(255,255,255,.92);color:var(--ink);font-size:20px;line-height:1}
+.on .heart,.heart.on{background:var(--moss);color:#fff}
+.bar{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--white);border-top:1px solid var(--line);border-radius:24px 24px 0 0;padding:12px 20px calc(14px + env(safe-area-inset-bottom))}
+.bar .in{max-width:1100px;margin:0 auto}
+.bar .msg{font-size:13px;line-height:1.35;background:var(--sage);border-radius:14px;padding:8px 8px 8px 14px;margin-bottom:8px;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.bar .msg.soft{background:var(--card2);padding:7px 14px}
+.bar .msg button{flex-shrink:0}
+.bar .hint{font-size:12px;color:var(--mute);margin:0 4px 8px}
+.bar .line{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.bar .tot{font-family:'Playfair Display',serif;font-size:28px;letter-spacing:-.03em;line-height:1}
+.bar .tot small{display:block;font-family:'Figtree',sans-serif;font-size:12px;color:var(--mute);letter-spacing:0;margin-bottom:2px}
+.lb{position:fixed;inset:0;z-index:50;background:rgba(245,245,241,.98);display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+.lb.open{display:flex}
+.lb img{max-width:100%;max-height:72vh;border-radius:16px;pointer-events:none}
+.lb .ctl{display:flex;gap:12px;align-items:center;margin-top:16px}
+.lb .nav{position:absolute;top:50%;transform:translateY(-50%);width:46px;height:46px;min-height:0;padding:0;border-radius:50%;background:var(--white);color:var(--ink);border:1px solid var(--line);font-size:20px}
+.lb .x{position:absolute;top:14px;right:16px;width:42px;height:42px;min-height:0;padding:0;border-radius:50%;background:var(--white);color:var(--ink);border:1px solid var(--line);font-size:18px}
+.sheet{position:fixed;inset:0;z-index:60;background:rgba(36,39,35,.35);display:none;align-items:flex-end;justify-content:center}
+.sheet.open{display:flex}
+.sheet .card{width:100%;max-width:520px;margin:0;border-radius:28px 28px 0 0;padding:26px 22px calc(26px + env(safe-area-inset-bottom))}
+@media(min-width:700px){.sheet{align-items:center}.sheet .card{border-radius:28px}}
+</style></head><body>
+<div class="top wrap wide" style="padding-bottom:0"><a class="logo" href="index.html" style="color:inherit;text-decoration:none">LEANDRO GAROZI</a><a class="chip" href="index.html" style="text-decoration:none">← Início</a></div>
+<div class="wrap wide" id="root" style="padding-bottom:190px"><p class="muted" style="margin-top:40px">Carregando fotos...</p></div>
+
+<div class="bar" id="bar" style="display:none"><div class="in">
+  <div id="msg"></div>
+  <div class="line"><div class="tot"><small id="cnt"></small><span id="total">R$ 0</span></div>
+  <button class="go" id="fin" disabled>Finalizar</button></div>
+</div></div>
+
+<div class="lb" id="lb"><button class="x" id="lbx" aria-label="Fechar">✕</button>
+  <button class="nav" id="lbp" style="left:12px" aria-label="Anterior">‹</button>
+  <img id="lbi" alt=""><button class="nav" id="lbn" style="right:12px" aria-label="Próxima">›</button>
+  <div class="ctl"><span class="muted" id="lbc"></span><button id="lbh" class="light">♡ Escolher</button></div>
+</div>
+
+<div class="sheet" id="sheet"><div class="card">
+  <h2 id="sh-title">Quase lá</h2><p class="muted" id="sh-sub" style="font-size:14px;margin-bottom:16px"></p>
+  <form id="f">
+    <label>Seu nome</label><input id="name" required autocomplete="name">
+    <label>Seu WhatsApp (com DDD)</label><input id="wpp" type="tel" inputmode="tel" required autocomplete="tel" placeholder="27 99999-9999">
+    <label>E-mail (opcional)</label><input id="email" type="email" autocomplete="email">
+    <button class="go full" id="pay">Ir para o pagamento</button>
+    <button type="button" class="ghost full" id="back" style="margin-top:10px">Voltar</button>
+    <div class="err" id="err"></div>
+  </form>
+</div></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const reais = (c) => 'R$ ' + (c / 100).toFixed(2).replace('.', ',').replace(',00', '');
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (iso) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).replace(',', ' às');
+const A = Number(new URLSearchParams(location.search).get('a')) || 0;
+const KEY = 'sel:' + A;
+let ev, ids = [], sel = new Set(), quote = null, idx = 0, mode = 'cart', qt;
+
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...sel])); } catch (_) {} };
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (_) { return []; } };
+
+function header() {
+  const ath = ev.athletes.find((a) => a.id === A);
+  const first = ath ? ath.name.split(' ')[0] : '';
+  const dl = ev.deadline;
+  $('root').innerHTML = `
+    <div class="eyebrow">${esc(ev.eventName)}</div>
+    <h1>${ath ? `Fotos de <em>${esc(first)}</em>` : 'Todas as <em>fotos</em>'}</h1>
+    <p class="lead">${ath ? `Você aparece em <b>${ids.length}</b> foto${ids.length === 1 ? '' : 's'}. ` : ''}Toque na foto para ampliar e no coração para escolher.</p>
+    ${ath && dl.until ? `<div class="box sage" style="max-width:560px">Pacote completo por ${reais(ev.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}.</div>` : ''}
+    <div class="grid" id="grid"></div>`;
+  $('grid').innerHTML = ids.map((id) => `<div class="ph" data-id="${id}"><img src="/img/${id}" loading="lazy" alt="" draggable="false"><button class="heart" aria-label="Escolher foto">♡</button></div>`).join('');
+  $('grid').querySelectorAll('.ph').forEach((el) => {
+    el.onclick = (e) => { if (e.target.closest('.heart')) toggle(el.dataset.id); else openLb(ids.indexOf(el.dataset.id)); };
+  });
+  paint();
+}
+function paint() {
+  document.querySelectorAll('.ph').forEach((el) => {
+    const on = sel.has(el.dataset.id); el.classList.toggle('on', on); el.querySelector('.heart').textContent = on ? '♥' : '♡';
+  });
+  if (!$('lb').classList.contains('open')) return;
+  const on = sel.has(ids[idx]); $('lbh').textContent = on ? '♥ Escolhida' : '♡ Escolher';
+}
+function toggle(id) { sel.has(id) ? sel.delete(id) : sel.add(id); save(); paint(); requote(); }
+
+function requote() {
+  clearTimeout(qt); qt = setTimeout(async () => {
+    const n = sel.size;
+    $('bar').style.display = ids.length ? '' : 'none';
+    $('cnt').textContent = n ? `${n} foto${n > 1 ? 's' : ''}` : 'Nenhuma foto escolhida';
+    $('fin').disabled = !n;
+    if (!n) { $('total').textContent = reais(0); $('msg').innerHTML = '<div class="msg soft">Toque no coração para escolher suas fotos.</div>'; quote = null; return; }
+    const r = await (await fetch(`/api/quote?n=${n}${A ? '&athlete=' + A : ''}`)).json();
+    quote = r; $('total').textContent = reais(r.total);
+    let m = '';
+    if (r.kind === 'all') m = `<div class="msg">Você leva todas as fotos${A ? ' do atleta' : ''}, inclusive as que não escolheu.</div>`;
+    else if (r.freeExtra > 0 && !r.upsell) m = `<div class="msg soft">Você ainda pode escolher mais ${r.freeExtra} foto${r.freeExtra > 1 ? 's' : ''} sem pagar a mais.</div>`;
+    if (r.upsell && r.kind !== 'all') m = `<div class="msg"><span>Você aparece em ${ids.length} fotos. Por mais ${reais(r.upsell.extra)} leva todas.</span><button class="small" id="all">Quero todas</button></div>` + (r.freeExtra > 0 ? `<div class="hint">Você ainda pode escolher mais ${r.freeExtra} foto${r.freeExtra > 1 ? 's' : ''} sem pagar a mais.</div>` : '');
+    $('msg').innerHTML = m;
+    const b = $('all'); if (b) b.onclick = () => openSheet('all');
+  }, 120);
+}
+
+function openLb(i) { if (i < 0) return; idx = i; $('lb').classList.add('open'); showLb(); }
+function showLb() {
+  $('lbi').src = '/img/' + ids[idx]; $('lbc').textContent = `${idx + 1} / ${ids.length}`; paint();
+}
+const nav = (d) => { idx = (idx + d + ids.length) % ids.length; showLb(); };
+$('lbn').onclick = () => nav(1); $('lbp').onclick = () => nav(-1);
+$('lbx').onclick = () => $('lb').classList.remove('open');
+$('lbh').onclick = () => toggle(ids[idx]);
+document.addEventListener('keydown', (e) => {
+  if (!$('lb').classList.contains('open')) return;
+  if (e.key === 'ArrowRight') nav(1); else if (e.key === 'ArrowLeft') nav(-1); else if (e.key === 'Escape') $('lb').classList.remove('open');
+});
+let sx = 0;
+$('lb').addEventListener('touchstart', (e) => { sx = e.touches[0].clientX; }, { passive: true });
+$('lb').addEventListener('touchend', (e) => { const dx = e.changedTouches[0].clientX - sx; if (Math.abs(dx) > 50) nav(dx < 0 ? 1 : -1); });
+document.addEventListener('contextmenu', (e) => { if (e.target.closest('.ph, .lb')) e.preventDefault(); });
+document.addEventListener('dragstart', (e) => { if (e.target.tagName === 'IMG') e.preventDefault(); });
+
+function openSheet(m) {
+  mode = m;
+  if (m === 'all') { $('sh-title').textContent = 'Pacote completo'; $('sh-sub').textContent = `Todas as fotos do atleta por ${reais(ev.allPrice)}.`; }
+  else if (!A && sel.size > 90) { alert('Escolha até 90 fotos por pedido.'); return; }
+  else { $('sh-title').textContent = 'Quase lá'; $('sh-sub').textContent = quote ? (quote.kind === 'all' ? `Pacote completo: ${reais(quote.total)}.` : `${sel.size} foto${sel.size > 1 ? 's' : ''}: ${reais(quote.total)}.`) : ''; }
+  $('err').textContent = ''; $('sheet').classList.add('open');
+}
+$('fin').onclick = () => openSheet('cart');
+$('back').onclick = () => $('sheet').classList.remove('open');
+$('f').addEventListener('submit', async (x) => {
+  x.preventDefault(); $('err').textContent = ''; $('pay').disabled = true;
+  const body = { name: $('name').value, whatsapp: $('wpp').value, email: $('email').value };
+  if (A) body.athleteId = A;
+  if (mode === 'all') body.all = true; else body.photoIds = [...sel];
+  try {
+    const r = await fetch('/api/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Erro');
+    location.href = d.url;
+  } catch (e) { $('err').textContent = e.message; $('pay').disabled = false; }
+});
+
+Promise.all([fetch('/api/event').then((r) => r.json()), fetch('/api/photos' + (A ? '?athlete=' + A : '')).then((r) => r.json())]).then(([e, p]) => {
+  ev = e; ids = p.photos; sel = new Set(load().filter((id) => ids.includes(id)));
+  document.title = 'Fotos: ' + e.eventName;
+  if (!ids.length) { $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Em <em>breve</em></h1><p class="lead">As fotos ainda não foram publicadas. Volte em breve, elas aparecem aqui assim que estiverem prontas.</p>`; return; }
+  header(); requote();
+}).catch(() => { $('root').innerHTML = '<p class="err" style="margin-top:40px">Não consegui carregar. Recarregue a página.</p>'; });
+</script></body></html>

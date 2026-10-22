@@ -1,8 +1,7 @@
 // Roda os handlers de verdade contra SQLite em memória (imita o D1) e um Mercado Pago falso.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { DatabaseSync } from 'node:sqlite';
+import { makeDB } from './helpers.js';
 import { hmacHex } from '../functions/_lib/util.js';
 import { verifySignature } from '../functions/_lib/mp.js';
 import * as event from '../functions/api/event.js';
@@ -13,21 +12,6 @@ import * as login from '../functions/api/admin/login.js';
 import * as aOrders from '../functions/api/admin/orders.js';
 import * as aConfig from '../functions/api/admin/config.js';
 import * as aAth from '../functions/api/admin/athletes.js';
-
-function makeDB() {
-  const db = new DatabaseSync(':memory:');
-  for (const f of ['0001_init.sql', '0002_atletas.sql']) db.exec(readFileSync(new URL('../migrations/' + f, import.meta.url), 'utf8'));
-  const prep = (sql) => {
-    const mk = (args) => ({
-      first: async () => db.prepare(sql).get(...args) ?? null,
-      all: async () => ({ results: db.prepare(sql).all(...args) }),
-      run: async () => { db.prepare(sql).run(...args); return {}; },
-    });
-    const s = { bind: (...args) => ({ ...mk(args), _sql: sql, _args: args }), ...mk([]) };
-    return s;
-  };
-  return { prepare: prep, batch: async (stmts) => { for (const s of stmts) await s.run(); } };
-}
 
 const env = { DB: makeDB(), MP_ACCESS_TOKEN: 'TEST-token', ADMIN_PASSWORD: 'segredo' };
 const req = (path, init) => new Request('https://fotos.test' + path, init);
