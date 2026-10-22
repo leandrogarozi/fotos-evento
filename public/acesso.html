@@ -11,7 +11,7 @@
   <div class="card" id="box">
     <form id="f">
       <label>Seu WhatsApp (com DDD)</label><input id="wpp" type="tel" inputmode="tel" required autocomplete="tel" placeholder="27 99999-9999">
-      <label>Sua senha (4 a 6 números)</label><input id="pin" type="password" inputmode="numeric" maxlength="6" required autocomplete="current-password">
+      <label>Sua senha (4 a 6 números)</label><input class="pin" id="pin" type="password" inputmode="numeric" maxlength="6" required autocomplete="current-password">
       <button class="go full" id="go">Entrar</button>
       <div class="err" id="err"></div>
     </form>
@@ -34,4 +34,4 @@ $('f').addEventListener('submit', async (x) => {
       `<a class="btn light" style="justify-content:space-between;width:100%;min-height:54px" href="pedido.html?t=${o.token}"><span>${esc(o.athlete || 'Fotos avulsas')} · ${o.kind === 'todas' ? 'pacote completo' : 'fotos escolhidas'}</span><span class="pill ${o.status}">${o.status}</span></a>`).join('') + '</div>';
   } catch (err) { $('err').textContent = err.message; $('go').disabled = false; }
 });
-</script></body></html>
+</script><script src="pin.js"></script></body></html>

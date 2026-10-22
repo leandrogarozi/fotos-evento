@@ -60,3 +60,7 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute
 .steps li::before{content:counter(s);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;background:var(--sage);color:var(--ink);display:grid;place-items:center;font-size:13px;font-weight:700}
 .ok-mark{width:56px;height:56px;border-radius:50%;background:var(--sage);display:grid;place-items:center;font-size:26px;margin-bottom:14px}
 .hint-small{font-size:12px;color:var(--mute);margin-top:6px}
+.pinwrap{position:relative}
+.pinwrap input{padding-right:54px}
+.eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:42px;height:42px;min-height:0;padding:0;border-radius:50%;background:transparent;color:var(--mute)}
+.eye.on{color:var(--moss)}

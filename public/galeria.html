@@ -52,7 +52,7 @@
     <label>Seu nome</label><input id="name" required autocomplete="name">
     <label>Seu WhatsApp (com DDD)</label><input id="wpp" type="tel" inputmode="tel" required autocomplete="tel" placeholder="27 99999-9999">
     <label>E-mail (opcional)</label><input id="email" type="email" autocomplete="email">
-    <label>Crie uma senha de 4 a 6 números</label><input id="pin" type="password" inputmode="numeric" maxlength="6" required autocomplete="new-password" placeholder="Ex.: 1234">
+    <label>Crie uma senha de 4 a 6 números</label><input class="pin" id="pin" type="password" inputmode="numeric" maxlength="6" required autocomplete="new-password" placeholder="Ex.: 1234">
     <div class="hint-small">Você usa essa senha com o seu WhatsApp para baixar as fotos depois. Anote.</div>
     <button class="go full" id="pay">Ir para o pagamento</button>
     <button type="button" class="ghost full" id="back" style="margin-top:10px">Voltar</button>
@@ -161,4 +161,4 @@ Promise.all([fetch('/api/event').then((r) => r.json()), fetch('/api/photos' + (A
   if (!ids.length) { $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Em <em>breve</em></h1><p class="lead">As fotos ainda não foram publicadas. Volte em breve, elas aparecem aqui assim que estiverem prontas.</p>`; return; }
   header(); requote();
 }).catch(() => { $('root').innerHTML = '<p class="err" style="margin-top:40px">Não consegui carregar. Recarregue a página.</p>'; });
-</script></body></html>
+</script><script src="pin.js"></script></body></html>

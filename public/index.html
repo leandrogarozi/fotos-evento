@@ -5,6 +5,7 @@
 </head><body>
 <div class="top wrap" style="padding-bottom:0"><span class="logo">LEANDRO GAROZI</span><a class="chip" href="acesso.html" style="text-decoration:none;color:var(--ink)">Já comprei</a></div>
 <div class="wrap" id="root"><p class="muted" style="margin-top:40px">Carregando...</p></div>
+<script src="pin.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const reais = (c) => 'R$ ' + (c / 100).toFixed(2).replace('.', ',').replace(',00', '');
@@ -37,7 +38,7 @@ function presaleView(e) {
         <label>Seu nome</label><input id="name" required autocomplete="name">
         <label>Seu WhatsApp (com DDD)</label><input id="wpp" type="tel" inputmode="tel" required autocomplete="tel" placeholder="27 99999-9999">
         <label>E-mail (opcional)</label><input id="email" type="email" autocomplete="email">
-        <label>Crie uma senha de 4 a 6 números</label><input id="pin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{4,6}" required autocomplete="new-password" placeholder="Ex.: 1234">
+        <label>Crie uma senha de 4 a 6 números</label><input class="pin" id="pin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{4,6}" required autocomplete="new-password" placeholder="Ex.: 1234">
         <div class="hint-small">Você usa essa senha com o seu WhatsApp para baixar as fotos depois. Anote.</div>
         <button class="go full" id="go">Pagar com Pix ou cartão</button>
         <div class="err" id="err"></div>
@@ -51,7 +52,7 @@ function presaleView(e) {
         <li>Depois do evento, volte aqui, toque em <b>Já comprei</b> e entre com seu WhatsApp e a senha que você criou.</li>
       </ol>
     </div>`;
-  until = e.presaleEnd; tick();
+  until = e.presaleEnd; tick(); if (window.initPins) initPins();
   $('f').addEventListener('submit', async (x) => {
     x.preventDefault(); $('err').textContent = ''; $('go').disabled = true;
     try {
