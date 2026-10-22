@@ -9,14 +9,15 @@ export async function onRequestGet({ params, request, env }) {
   if (new URL(request.url).searchParams.get('sync')) order = await syncOrder(env, order, new URL(request.url).origin);
   const list = await orderPhotos(env, order);
   const q = list.length ? await dlQuery(env, order) : '';
-  const cfg = await getConfig(env);
+  const cfg = await getConfig(env, order.event_id);
   let claimed = [], galleryCount = 0;
   if (order.kind === 'todas' && ['pago', 'liberado'].includes(order.status)) {
     claimed = (await env.DB.prepare('SELECT photo_id FROM order_photos WHERE order_id = ?').bind(order.id).all()).results.map((r) => r.photo_id);
-    galleryCount = (await env.DB.prepare('SELECT COUNT(*) AS n FROM photos WHERE has_orig = 1 AND has_prev = 1').first()).n;
+    galleryCount = (await env.DB.prepare('SELECT COUNT(*) AS n FROM photos WHERE has_orig = 1 AND has_prev = 1 AND event_id = ?').bind(order.event_id).first()).n;
   }
   return json({
     claimed, galleryCount, claimEnabled: Number(cfg.claim_enabled) === 1, claimMax: Math.max(0, Number(cfg.claim_max) || 0),
+    eventSlug: order.event_slug, eventName: order.event_name,
     status: order.status,
     kind: order.kind,
     athlete: order.athlete_name,

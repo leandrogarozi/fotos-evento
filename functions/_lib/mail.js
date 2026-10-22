@@ -6,7 +6,7 @@ const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': 
 export async function sendAccessEmail(env, { order, pin, origin }) {
   if (!env.MAIL_WEBHOOK_URL || !order.email) return false;
   try {
-    const cfg = await getConfig(env);
+    const cfg = await getConfig(env, order.event_id);
     const first = String(order.buyer_name || '').split(' ')[0];
     const what = order.athlete_name ? `as fotos de ${order.athlete_name}` : 'as suas fotos';
     const subject = `Pagamento confirmado: suas fotos do ${cfg.event_name}`;

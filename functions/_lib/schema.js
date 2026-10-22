@@ -6,10 +6,21 @@ const DDL = [
   `CREATE INDEX IF NOT EXISTS idx_pa_athlete ON photo_athletes(athlete_id)`,
   `CREATE TABLE IF NOT EXISTS order_photos (order_id TEXT NOT NULL REFERENCES orders(id), photo_id TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE, PRIMARY KEY (order_id, photo_id))`,
   `CREATE TABLE IF NOT EXISTS access_attempts (wpp TEXT PRIMARY KEY, fails INTEGER NOT NULL DEFAULT 0, locked_until TEXT)`,
+  `CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE, name TEXT NOT NULL, is_main INTEGER NOT NULL DEFAULT 0, archived INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS event_config (event_id INTEGER NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (event_id, key))`,
+];
+// Depois das colunas: o evento atual vira o evento principal (id 1) com a configuração que já existe.
+const SEED = [
+  `INSERT OR IGNORE INTO events (id, slug, name, is_main, created_at) VALUES (1, 'principal', COALESCE((SELECT value FROM config WHERE key = 'event_name'), 'Evento'), 1, datetime('now'))`,
+  `INSERT OR IGNORE INTO event_config (event_id, key, value) SELECT 1, key, value FROM config WHERE NOT EXISTS (SELECT 1 FROM event_config WHERE event_id = 1)`,
+  `CREATE INDEX IF NOT EXISTS idx_athletes_event ON athletes(event_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_photos_event ON photos(event_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_orders_event ON orders(event_id)`,
 ];
 const ADD_COLUMNS = [
   ['orders', 'pin_salt', "TEXT NOT NULL DEFAULT ''"], ['orders', 'pin_hash', "TEXT NOT NULL DEFAULT ''"], ['orders', 'pin_enc', "TEXT NOT NULL DEFAULT ''"],
   ['photos', 'triaged', 'INTEGER NOT NULL DEFAULT 0'],
+  ['athletes', 'event_id', 'INTEGER NOT NULL DEFAULT 1'], ['photos', 'event_id', 'INTEGER NOT NULL DEFAULT 1'], ['orders', 'event_id', 'INTEGER NOT NULL DEFAULT 1'],
 ];
 
 let ready = null;
@@ -30,4 +41,5 @@ async function run(env) {
       try { await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${name} ${def}`).run(); } catch (_) { /* outra instância criou antes */ }
     }
   }
+  await env.DB.batch(SEED.map((q) => env.DB.prepare(q)));
 }

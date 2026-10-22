@@ -7,6 +7,7 @@
 <h1>Painel <em>administrativo</em></h1>
 <div class="card" id="login"><label>Senha</label><input id="pw" type="password"><button class="full" id="ok">Entrar</button><div class="err" id="lerr"></div></div>
 <div id="app" style="display:none">
+  <div class="card" id="evbox" style="margin-top:0;padding:16px 20px"></div>
   <div class="tabs"><button data-t="orders" class="on">Pedidos</button><button data-t="config">Preços e datas</button><button data-t="photos">Fotos</button><button data-t="triage">Triagem</button><button data-t="athletes">Atletas</button><button data-t="link">Link e QR</button></div>
   <div class="card" id="orders"></div>
   <div class="card" id="config" style="display:none"></div>
@@ -21,12 +22,60 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const reais = (c) => 'R$ ' + (c / 100).toFixed(2).replace('.', ',').replace(',00', '');
 let tok = ''; try { tok = sessionStorage.getItem('adm') || ''; } catch (_) {}
+let EVENTS = [], curEv = { id: 1, slug: 'principal', is_main: true, name: '' };
+const evParam = () => (curEv.is_main ? '' : curEv.slug);
+const pub = (u) => u + (u.includes('?') ? '&' : '?') + 'e=' + encodeURIComponent(curEv.slug);
 const api = async (path, body) => {
-  const r = await fetch('/api/admin/' + path, { method: body ? 'POST' : 'GET', headers: { authorization: 'Bearer ' + tok, 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
+  const r = await fetch('/api/admin/' + path, { method: body ? 'POST' : 'GET', headers: { authorization: 'Bearer ' + tok, 'x-event': String(curEv.id), 'content-type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
   if (r.status === 401) { tok = ''; throw new Error('401'); }
   const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Erro'); return d;
 };
-async function enter() { $('login').style.display = 'none'; $('app').style.display = 'block'; await Promise.all([lo(), lc(), la(), ll(), lp()]); }
+async function loadEvents(selectId) {
+  EVENTS = (await api('events')).events;
+  let want = selectId || Number((() => { try { return sessionStorage.getItem('adm_ev'); } catch (_) { return ''; } })());
+  curEv = EVENTS.find(e => e.id === want) || EVENTS.find(e => e.is_main) || EVENTS[0] || curEv;
+  try { sessionStorage.setItem('adm_ev', String(curEv.id)); } catch (_) {}
+  drawEvBox();
+}
+function drawEvBox() {
+  $('evbox').innerHTML = `<div class="row" style="gap:10px;flex-wrap:wrap"><span style="font-size:13px;font-weight:600;color:var(--mute)">EVENTO</span>
+    <select id="ev-sel" style="flex:1;min-width:200px;max-width:360px;font-weight:600">${EVENTS.map(e => `<option value="${e.id}" ${e.id === curEv.id ? 'selected' : ''}>${esc(e.name)}${e.is_main ? ' (principal)' : ''}${e.archived ? ' (arquivado)' : ''}</option>`).join('')}</select>
+    <button class="small ghost" onclick="evEdit()">Configurar evento</button><button class="small" onclick="evNew()">+ Novo evento</button></div>
+    <div class="muted" style="font-size:12px;margin-top:8px">Tudo abaixo (pedidos, preços, fotos, atletas e links) é do evento escolhido. Fotos: ${curEv.photos ?? 0} · Atletas: ${curEv.athletes ?? 0} · Pedidos pagos: ${curEv.paid ?? 0}</div>`;
+  $('ev-sel').onchange = async () => { curEv = EVENTS.find(e => e.id === Number($('ev-sel').value)) || curEv; try { sessionStorage.setItem('adm_ev', String(curEv.id)); } catch (_) {} drawEvBox(); await refreshAll(); };
+}
+const refreshAll = () => Promise.all([lo(), lc(), la(), ll(), lp()]).then(() => { tq = { ids: [], i: 0, chips: [], sticky: false }; });
+function modal(html) {
+  const m = document.createElement('div'); m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px';
+  m.innerHTML = `<div class="card" style="max-width:480px;width:100%;margin:0;max-height:90vh;overflow:auto">${html}</div>`;
+  m.onclick = (e) => { if (e.target === m) m.remove(); }; document.body.appendChild(m); return m;
+}
+function evNew() {
+  const m = modal(`<h2>Novo evento</h2><p class="muted" style="font-size:14px;margin-bottom:12px">Cria uma galeria nova, com atletas, fotos, pedidos, preços e textos só dela.</p>
+    <label>Nome do evento</label><input id="en-name" placeholder="Ex.: CrossFit Vida Ativa">
+    <label style="display:flex;gap:10px;align-items:center;color:var(--ink);margin-top:14px"><input type="checkbox" id="en-copy" checked> Copiar preços e textos do evento "${esc(curEv.name)}" (você ajusta depois)</label>
+    <div class="row" style="margin-top:16px"><button id="en-go">Criar evento</button><button class="ghost" id="en-x">Cancelar</button></div><div class="err" id="en-err"></div>`);
+  m.querySelector('#en-x').onclick = () => m.remove();
+  m.querySelector('#en-go').onclick = async () => {
+    try { const r = await api('events', { action: 'create', name: m.querySelector('#en-name').value, copyFrom: m.querySelector('#en-copy').checked ? curEv.id : undefined }); m.remove(); await loadEvents(r.id); await refreshAll(); }
+    catch (e) { m.querySelector('#en-err').textContent = e.message; }
+  };
+  m.querySelector('#en-name').focus();
+}
+function evEdit() {
+  const m = modal(`<h2>Configurar evento</h2>
+    <label>Nome do evento</label><input id="ee-name" value="${esc(curEv.name)}">
+    ${curEv.is_main ? '<p class="muted" style="font-size:13px;margin-top:12px">Este é o evento <b>principal</b>: abre no endereço do site sem nada depois.</p>' : `<label>Endereço do evento</label><input id="ee-slug" value="${esc(curEv.slug)}"><div class="hint-small">${esc(location.origin)}/?e=<b>${esc(curEv.slug)}</b></div>`}
+    <div class="row" style="margin-top:16px"><button id="ee-save">Salvar</button><button class="ghost" id="ee-x">Fechar</button></div>
+    <div class="row" style="margin-top:14px;gap:8px">${curEv.is_main ? '' : '<button class="small light" id="ee-main">Tornar principal</button>'}${curEv.is_main ? '' : `<button class="small light" id="ee-arch">${curEv.archived ? 'Reativar vendas' : 'Arquivar (encerra as vendas)'}</button>`}</div><div class="err" id="ee-err"></div>`);
+  const done = async () => { m.remove(); await loadEvents(curEv.id); await refreshAll(); };
+  const run = async (body) => { try { await api('events', { id: curEv.id, ...body }); await done(); } catch (e) { m.querySelector('#ee-err').textContent = e.message; } };
+  m.querySelector('#ee-x').onclick = () => m.remove();
+  m.querySelector('#ee-save').onclick = () => run({ action: 'update', name: m.querySelector('#ee-name').value, slug: m.querySelector('#ee-slug') ? m.querySelector('#ee-slug').value : undefined });
+  if (m.querySelector('#ee-main')) m.querySelector('#ee-main').onclick = () => { if (confirm('Tornar este o evento principal? Ele passa a abrir no endereço do site sem nada depois.')) run({ action: 'main' }); };
+  if (m.querySelector('#ee-arch')) m.querySelector('#ee-arch').onclick = () => run({ action: 'archive', archived: !curEv.archived });
+}
+async function enter() { $('login').style.display = 'none'; $('app').style.display = 'block'; await loadEvents(); await Promise.all([lo(), lc(), la(), ll(), lp()]); }
 $('ok').onclick = async () => {
   try {
     const r = await fetch('/api/admin/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: $('pw').value }) });
@@ -166,13 +215,18 @@ async function la() {
   $('athletes').innerHTML = '<h2>Atletas</h2><div class="row" style="margin-bottom:14px"><input id="an" placeholder="Nome" style="flex:2"><input id="at" placeholder="Turma" style="flex:1"><button class="small" id="aadd">Adicionar</button></div>' +
     '<table>' + d.athletes.map(a => `<tr><td>${esc(a.name)} <span class="muted">${esc(a.turma)}</span></td><td style="text-align:right"><button class="small ghost" onclick="tg(${a.id},${a.active ? 0 : 1})">${a.active ? 'Tirar da lista' : 'Voltar pra lista'}</button></td></tr>`).join('') + '</table>';
   $('aadd').onclick = async () => { try { await api('athletes', { action: 'add', name: $('an').value, turma: $('at').value }); la(); } catch (e) { alert(e.message); } };
+  $('athletes').insertAdjacentHTML('afterbegin', `<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:14px;font-weight:600">Adicionar vários de uma vez (colar lista)</summary>
+    <p class="muted" style="font-size:13px;margin:8px 0">Um atleta por linha. Pode ser só o nome, ou <b>Nome, turma</b>. Cole direto de uma planilha.</p>
+    <textarea id="abulk" rows="6" placeholder="Ana Souza, RX&#10;Bruno Lima, INT&#10;Carla Dias"></textarea>
+    <button class="small" style="margin-top:8px" id="abulk-go">Adicionar lista</button></details>`);
+  $('abulk-go').onclick = async () => { try { const r = await api('athletes', { action: 'bulk', text: $('abulk').value }); alert(r.count + ' atleta(s) adicionados.'); la(); lp(); } catch (e) { alert(e.message); } };
 }
 async function tg(id, active) { await api('athletes', { action: 'toggle', id, active }); la(); }
 function ll() {
   const items = [
-    ['Página de venda', 'Link principal: é o que você divulga (pré-venda e loja).', location.origin + '/'],
-    ['Já comprei (acesso às fotos)', 'Para quem já comprou entrar com WhatsApp e senha e ver as fotos.', location.origin + '/acesso.html'],
-    ['Galeria geral', 'Todas as fotos com marca d\'água, para escolher e comprar.', location.origin + '/galeria.html'],
+    ['Página de venda: ' + curEv.name, 'É o que você divulga (pré-venda e loja) deste evento.', location.origin + '/' + (evParam() ? '?e=' + evParam() : '')],
+    ['Já comprei (acesso às fotos)', 'Serve para todos os eventos: quem já comprou entra com WhatsApp e senha.', location.origin + '/acesso.html'],
+    ['Galeria geral: ' + curEv.name, 'Todas as fotos do evento com marca d\'água, para escolher e comprar.', location.origin + '/galeria.html' + (evParam() ? '?e=' + evParam() : '')],
   ];
   $('link').innerHTML = '<h2>Links e QR codes</h2>' + items.map((it, i) => `
     <div style="border-top:${i ? '1px solid var(--line)' : '0'};padding:18px 0;display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
@@ -192,7 +246,7 @@ function ll() {
 let tq = { ids: [], i: 0, chips: [], sticky: false };
 async function lt() {
   if (!athletesCache.length) { try { await lp(); } catch (_) {} }
-  tq.ids = (await (await fetch('/api/photos?queue=1')).json()).photos; tq.i = 0; tq.chips = []; trender();
+  tq.ids = (await (await fetch(pub('/api/photos?queue=1'))).json()).photos; tq.i = 0; tq.chips = []; trender();
 }
 const tqName = (id) => (athletesCache.find(a => a.id === id) || {}).name || '';
 function trender() {
@@ -236,7 +290,7 @@ async function tqGeral() {
 const norm = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 let athletesCache = [], brandText = 'Leandro Garozi Fotografia';
 async function lp() {
-  const [d, ev] = await Promise.all([api('photos'), fetch('/api/event').then(r => r.json()).catch(() => ({}))]);
+  const [d, ev] = await Promise.all([api('photos'), fetch(pub('/api/event')).then(r => r.json()).catch(() => ({}))]);
   athletesCache = d.athletes; if (ev.brandText) brandText = ev.brandText;
   $('photos').innerHTML = `<h2>Fotos (${d.total} publicadas)</h2>
     <p class="muted" style="font-size:13px;margin-bottom:14px">Envie os JPGs editados: todos entram na galeria. A original fica privada e a vitrine sai com marca d'água no meio. Depois, em "Fotos enviadas" abaixo, você pode selecionar fotos e atribuir a um atleta, se souber quem é.</p>
@@ -293,7 +347,7 @@ let pmIds = [], pmSel = new Set();
 async function pmLoad() {
   const a = $('pm-ath').value; pmSel = new Set();
   if (!a) { pmIds = []; pmRender(); return; }
-  const url = a === 'geral' ? '/api/photos?geral=1' : a === 'todas' ? '/api/photos' : '/api/photos?athlete=' + a;
+  const url = pub(a === 'geral' ? '/api/photos?geral=1' : a === 'todas' ? '/api/photos' : '/api/photos?athlete=' + a);
   pmIds = (await (await fetch(url)).json()).photos; pmRender();
 }
 function pmRender() {

@@ -2,6 +2,7 @@ import { json, bad, readJson, uid, token } from '../_lib/util.js';
 import { normWpp, validPin, newPin } from '../_lib/pin.js';
 import { encryptPin } from '../_lib/secret.js';
 import { getConfig } from '../_lib/db.js';
+import { eventBySlug } from '../_lib/events.js';
 import { isPresale, allPrice, cartPrice, reais, salesOpen } from '../_lib/pricing.js';
 import { createPreference } from '../_lib/mp.js';
 
@@ -19,12 +20,14 @@ export async function onRequestPost({ request, env }) {
   if (!/^\S+@\S+\.\S+$/.test(email)) return bad('Informe um e-mail válido: é para ele que enviamos sua senha e o link.');
   if (!validPin(b.pin)) return bad('Crie uma senha de 4 a 6 números.');
 
-  const cfg = await getConfig(env);
-  if (!salesOpen(cfg)) return bad('As vendas foram encerradas.', 410);
+  const ev = await eventBySlug(env, b.e);
+  if (!ev) return bad('Evento não encontrado.', 404);
+  const cfg = await getConfig(env, ev.id);
+  if (ev.archived || !salesOpen(cfg)) return bad('As vendas foram encerradas.', 410);
   const now = Date.now();
   let athlete = null;
   if (b.athleteId) {
-    athlete = await env.DB.prepare('SELECT id, name FROM athletes WHERE id = ?').bind(Number(b.athleteId)).first();
+    athlete = await env.DB.prepare('SELECT id, name FROM athletes WHERE id = ? AND event_id = ?').bind(Number(b.athleteId), ev.id).first();
     if (!athlete) return bad('Atleta não encontrado.');
   }
 
@@ -37,7 +40,7 @@ export async function onRequestPost({ request, env }) {
     photoIds = [...new Set((b.photoIds || []).map(String))];
     if (!photoIds.length) return bad('Escolha pelo menos uma foto.');
     if (photoIds.length > MAX_PHOTOS) return bad(`Escolha até ${MAX_PHOTOS} fotos por pedido (ou leve o pacote completo).`);
-    const ok = await env.DB.prepare('SELECT COUNT(*) AS n FROM photos WHERE id IN (SELECT value FROM json_each(?)) AND has_orig = 1 AND has_prev = 1').bind(JSON.stringify(photoIds)).first();
+    const ok = await env.DB.prepare('SELECT COUNT(*) AS n FROM photos WHERE id IN (SELECT value FROM json_each(?)) AND has_orig = 1 AND has_prev = 1 AND event_id = ?').bind(JSON.stringify(photoIds), ev.id).first();
     if (ok.n !== photoIds.length) return bad('Alguma foto não está mais disponível. Recarregue a página.');
     // O pacote completo só cobre as fotos do atleta (e as gerais, se a opção estiver ligada).
     let covered = true;
@@ -54,9 +57,9 @@ export async function onRequestPost({ request, env }) {
   const order = { id: uid(), token: token(), created_at: new Date().toISOString() };
   const pin = await newPin(b.pin, whatsapp);
   const stmts = [env.DB.prepare(
-    `INSERT INTO orders (id, token, athlete_id, buyer_name, whatsapp, email, kind, amount_cents, status, created_at, presale, pin_salt, pin_hash, pin_enc)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'aguardando', ?, 0, ?, ?, ?)`
-  ).bind(order.id, order.token, athlete ? athlete.id : null, name, whatsapp, email, kind, amount, order.created_at, pin.salt, pin.hash, await encryptPin(env, b.pin))];
+    `INSERT INTO orders (id, token, athlete_id, buyer_name, whatsapp, email, kind, amount_cents, status, created_at, presale, pin_salt, pin_hash, pin_enc, event_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'aguardando', ?, 0, ?, ?, ?, ?)`
+  ).bind(order.id, order.token, athlete ? athlete.id : null, name, whatsapp, email, kind, amount, order.created_at, pin.salt, pin.hash, await encryptPin(env, b.pin), ev.id)];
   if (photoIds.length) stmts.push(env.DB.prepare('INSERT INTO order_photos (order_id, photo_id) SELECT ?, value FROM json_each(?)').bind(order.id, JSON.stringify(photoIds)));
   await env.DB.batch(stmts);
 

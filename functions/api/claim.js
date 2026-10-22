@@ -11,7 +11,7 @@ export async function onRequestPost({ request, env }) {
   const order = await getOrder(env, 'o.token', String(b.token || ''));
   if (!order || !PAID.includes(order.status)) return bad('Pedido não encontrado ou ainda não pago.', 403);
   if (order.kind !== 'todas') return bad('Este pedido não permite marcar fotos.', 403);
-  const cfg = await getConfig(env);
+  const cfg = await getConfig(env, order.event_id);
   if (Number(cfg.claim_enabled) !== 1) return bad('A marcação de fotos está desligada. Suas fotos aparecem aqui assim que forem identificadas.', 403);
   const max = Number(cfg.claim_max) > 0 ? Number(cfg.claim_max) : Infinity;
   const ids = [...new Set((b.photoIds || []).map(String))];

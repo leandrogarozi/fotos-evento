@@ -9,6 +9,8 @@
 <script src="txt.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
+const E = new URLSearchParams(location.search).get('e') || '';
+const eq = E ? '?e=' + encodeURIComponent(E) : '', eand = E ? '&e=' + encodeURIComponent(E) : '';
 const reais = (c) => 'R$ ' + (c / 100).toFixed(2).replace('.', ',').replace(',00', '');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = (iso) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).replace(',', ' às');
@@ -83,7 +85,7 @@ function presaleView(e) {
     x.preventDefault(); $('err').textContent = ''; $('go').disabled = true;
     try {
       const r = await fetch('/api/presale', { method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ athleteId: $('athlete').value, name: $('name').value, whatsapp: $('wpp').value, email: $('email').value, pin: $('pin').value }) });
+        body: JSON.stringify({ e: E, athleteId: $('athlete').value, name: $('name').value, whatsapp: $('wpp').value, email: $('email').value, pin: $('pin').value }) });
       const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Erro');
       try { localStorage.setItem('wpp', $('wpp').value); } catch (_) {}
       location.href = d.url;
@@ -102,7 +104,7 @@ function storeView(e) {
       <select id="athlete"><option value="">Escolha o atleta</option>${options(e)}</select>
       <div class="hint-small">Não achou o nome? <a href="${nameHelp(e)}" target="_blank" style="color:var(--moss);font-weight:700">Fale comigo</a>.</div>
       <button class="go full" id="see">Ver minhas fotos</button>
-      <a class="btn light full" style="width:100%;margin-top:12px" href="galeria.html">Ver todas as fotos</a>
+      <a class="btn light full" style="width:100%;margin-top:12px" href="galeria.html${eq}">Ver todas as fotos</a>
       <p class="hint-small" style="text-align:center;margin-top:16px">Já comprou? <a href="acesso.html" style="color:var(--moss);font-weight:700">Acesse suas fotos com WhatsApp e senha</a>.</p>
     </div>
     <div class="card" style="background:var(--card2);border:0">
@@ -114,9 +116,10 @@ function storeView(e) {
       ${dl.until ? `<div class="box sage">Pacote completo por ${reais(e.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}. <span id="count" class="chip" style="margin-left:6px"></span></div>` : ''}
     </div>`;
   until = dl.until; tick();
-  $('see').onclick = () => { const a = $('athlete').value; if (a) location.href = 'galeria.html?a=' + a; else $('athlete').focus(); };
+  $('see').onclick = () => { const a = $('athlete').value; if (a) location.href = 'galeria.html?a=' + a + eand; else $('athlete').focus(); };
 }
-fetch('/api/event').then((r) => r.json()).then((e) => {
+fetch('/api/event' + eq).then((r) => r.json()).then((e) => {
+  if (e.error) { $('root').innerHTML = '<h1 style="margin-top:40px">Evento <em>não encontrado</em></h1><p class="lead">Confira o link que você recebeu.</p>'; return; }
   ev = e; document.title = 'Fotos: ' + e.eventName;
   e.salesClosed ? closedView(e) : e.presale ? presaleView(e) : storeView(e);
   tickSales(); setInterval(() => { tick(); tickSales(); }, 30000);

@@ -30,7 +30,7 @@ test('vendas encerradas bloqueiam compra, mas quem já comprou continua entrando
   await webhook.onRequestPost({ request: new Request('https://f.test/w?type=payment&data.id=1', { method: 'POST', body: '{}' }), env });
   assert.equal((await (await event.onRequestGet({ env })).json()).salesClosed, false);
 
-  await env.DB.prepare("INSERT INTO config (key, value) VALUES ('sales_end', '2020-01-01T00:00:00Z')").run();
+  await env.DB.prepare("INSERT OR REPLACE INTO event_config (event_id, key, value) VALUES (1, 'sales_end', '2020-01-01T00:00:00Z')").run();
   const ev = await (await event.onRequestGet({ env })).json();
   assert.equal(ev.salesClosed, true); assert.equal(ev.salesEnd, '2020-01-01T00:00:00.000Z');
   assert.equal((await presale.onRequestPost({ request: req(body), env })).status, 410);
@@ -70,7 +70,7 @@ test('painel salva pacotes personalizados e o site passa a usá-los; recusa paco
   assert.equal(ok.status, 200); assert.equal((await ok.json()).tiers.length, 3);
   const ev = await (await event.onRequestGet({ env })).json();
   assert.deepEqual(ev.tiers.map((t) => t.n), [1, 2, 3]);
-  await env.DB.prepare("INSERT INTO config (key, value) VALUES ('presale_end', '2020-01-01T00:00:00Z')").run();
+  await env.DB.prepare("INSERT OR REPLACE INTO event_config (event_id, key, value) VALUES (1, 'presale_end', '2020-01-01T00:00:00Z')").run();
   const q = await (await quote.onRequestGet({ request: new Request('https://f.test/q?n=2'), env })).json();
   assert.equal(q.total, 3000);
 });

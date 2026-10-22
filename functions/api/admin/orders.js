@@ -6,6 +6,7 @@ import { sendAccessEmail } from '../../_lib/mail.js';
 import { getOrder } from '../../_lib/db.js';
 import { normWpp, validPin, newPin } from '../../_lib/pin.js';
 import { decryptPin } from '../../_lib/secret.js';
+import { adminEvent } from '../../_lib/events.js';
 
 export async function onRequestGet({ request, env }) {
   if (!(await isAdmin(request, env))) return denied();
@@ -14,8 +15,8 @@ export async function onRequestGet({ request, env }) {
             o.created_at, o.paid_at, o.manual, a.name AS athlete_name,
             (SELECT COUNT(*) FROM order_photos op WHERE op.order_id = o.id) AS n_photos
      FROM orders o LEFT JOIN athletes a ON a.id = o.athlete_id
-     WHERE o.status != 'erro' ORDER BY o.created_at DESC`
-  ).all();
+     WHERE o.status != 'erro' AND o.event_id = ? ORDER BY o.created_at DESC`
+  ).bind((await adminEvent(request, env)).id).all();
   const total = results.filter((o) => o.status === 'pago' || o.status === 'liberado')
     .reduce((s, o) => s + o.amount_cents, 0);
   return json({ orders: results, totalCents: total });

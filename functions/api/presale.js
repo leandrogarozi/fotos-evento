@@ -2,6 +2,7 @@ import { json, bad, readJson, uid, token } from '../_lib/util.js';
 import { normWpp, validPin, newPin } from '../_lib/pin.js';
 import { encryptPin } from '../_lib/secret.js';
 import { getConfig } from '../_lib/db.js';
+import { eventBySlug } from '../_lib/events.js';
 import { isPresale, allPrice, salesOpen } from '../_lib/pricing.js';
 import { createPreference } from '../_lib/mp.js';
 
@@ -16,11 +17,13 @@ export async function onRequestPost({ request, env }) {
   if (!/^\S+@\S+\.\S+$/.test(email)) return bad('Informe um e-mail válido: é para ele que enviamos sua senha e o link.');
   if (!validPin(b.pin)) return bad('Crie uma senha de 4 a 6 números.');
 
-  const athlete = await env.DB.prepare('SELECT id, name FROM athletes WHERE id = ? AND active = 1').bind(Number(b.athleteId)).first();
+  const ev = await eventBySlug(env, b.e);
+  if (!ev) return bad('Evento não encontrado.', 404);
+  const athlete = await env.DB.prepare('SELECT id, name FROM athletes WHERE id = ? AND active = 1 AND event_id = ?').bind(Number(b.athleteId), ev.id).first();
   if (!athlete) return bad('Escolha o atleta na lista.');
 
-  const cfg = await getConfig(env);
-  if (!salesOpen(cfg)) return bad('As vendas foram encerradas.', 410);
+  const cfg = await getConfig(env, ev.id);
+  if (ev.archived || !salesOpen(cfg)) return bad('As vendas foram encerradas.', 410);
   if (!isPresale(cfg)) return bad('A pré-venda terminou.', 410);
 
   const pin = await newPin(b.pin, whatsapp);
@@ -29,10 +32,10 @@ export async function onRequestPost({ request, env }) {
     kind: 'todas', amount_cents: allPrice(cfg), status: 'aguardando', created_at: new Date().toISOString(),
   };
   await env.DB.prepare(
-    `INSERT INTO orders (id, token, athlete_id, buyer_name, whatsapp, email, kind, amount_cents, status, created_at, presale, pin_salt, pin_hash, pin_enc)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?)`
+    `INSERT INTO orders (id, token, athlete_id, buyer_name, whatsapp, email, kind, amount_cents, status, created_at, presale, pin_salt, pin_hash, pin_enc, event_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`
   ).bind(order.id, order.token, order.athlete_id, order.buyer_name, order.whatsapp, order.email,
-         order.kind, order.amount_cents, order.status, order.created_at, pin.salt, pin.hash, await encryptPin(env, b.pin)).run();
+         order.kind, order.amount_cents, order.status, order.created_at, pin.salt, pin.hash, await encryptPin(env, b.pin), ev.id).run();
 
   try {
     const pref = await createPreference(env, {

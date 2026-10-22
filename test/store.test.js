@@ -99,7 +99,7 @@ test('upload incompleto (sem prévia) não aparece na vitrine', async () => {
 test('cotação: 1=15, 2=30, 3=40 (+1 grátis), 5=55 (sugere pacote); sem atleta não tem pacote', async () => {
   const qt = async (n, a) => (await quote.onRequestGet({ request: req(`/api/quote?n=${n}${a ? '&athlete=1' : ''}`), env })).json();
   // pré-venda encerrada para o teste: coloca o fim da pré-venda no passado
-  await env.DB.prepare("INSERT INTO config (key, value) VALUES ('presale_end', '2020-01-01T00:00:00Z')").run();
+  await env.DB.prepare("INSERT OR REPLACE INTO event_config (event_id, key, value) VALUES (1, 'presale_end', '2020-01-01T00:00:00Z')").run();
   assert.equal((await qt(1, 1)).total, 1500);
   assert.equal((await qt(2, 1)).total, 3000);
   const t3 = await qt(3, 1); assert.equal(t3.total, 4000); assert.equal(t3.freeExtra, 1);
@@ -169,7 +169,7 @@ test('fotos gerais (sem atleta): aparecem só na galeria geral e se apagam norma
 });
 
 test('marcar as próprias fotos (pacote completo sem atleta nas fotos): baixa só as marcadas, respeita o limite', async () => {
-  await env.DB.prepare("INSERT OR REPLACE INTO config (key, value) VALUES ('claim_enabled', '1')").run();
+  await env.DB.prepare("INSERT OR REPLACE INTO event_config (event_id, key, value) VALUES (1, 'claim_enabled', '1')").run();
   const g = [await upload('g1.jpg', [], 'ORIG-G1'), await upload('g2.jpg', [], 'ORIG-G2'), await upload('g3.jpg', [], 'ORIG-G3')];
   const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 3, all: true, name: 'Vanessa', pin: '1234', email: 'v@b.com', whatsapp: '27955554444' }), env })).json();
   const claimReq = (token, photoIds) => claim.onRequestPost({ request: post('/api/claim', { token, photoIds }), env });
@@ -185,11 +185,11 @@ test('marcar as próprias fotos (pacote completo sem atleta nas fotos): baixa s�
   assert.equal((await dl.onRequestGet({ params: { id: g[2] }, request: req(url3), env })).status, 403, 'não marcou, não baixa');
   assert.equal((await claimReq(c.token, [g[2]])).status, 200, 'nova marcação substitui a anterior');
   assert.deepEqual((await orderOf(c.token)).photos.map((x) => x.id), [g[2]]);
-  await env.DB.prepare("INSERT INTO config (key, value) VALUES ('claim_max', '1')").run();
+  await env.DB.prepare("INSERT OR REPLACE INTO event_config (event_id, key, value) VALUES (1, 'claim_max', '1')").run();
   assert.equal((await claimReq(c.token, [g[0], g[1]])).status, 400, 'passou do limite');
   assert.equal((await claimReq(c.token, ['inexistente'])).status, 400);
   assert.equal((await claimReq(c.token, [])).status, 200, 'limpar a seleção');
-  await env.DB.prepare("DELETE FROM config WHERE key = 'claim_max'").run();
+  await env.DB.prepare("DELETE FROM event_config WHERE key = 'claim_max'").run();
 });
 
 test('pedido de fotos avulsas não usa a marcação', async () => {
@@ -243,10 +243,10 @@ test('marcação livre desligada: não aceita marcação e marcações antigas n
   const g = await upload('off.jpg', [], 'ORIG-OFF');
   const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 7, all: true, name: 'Dani', pin: '1234', email: 'd@b.com', whatsapp: '27911110000' }), env })).json();
   await pay(6000);
-  await env.DB.prepare("INSERT OR REPLACE INTO config (key, value) VALUES ('claim_enabled', '1')").run();
+  await env.DB.prepare("INSERT OR REPLACE INTO event_config (event_id, key, value) VALUES (1, 'claim_enabled', '1')").run();
   assert.equal((await claim.onRequestPost({ request: post('/api/claim', { token: c.token, photoIds: [g] }), env })).status, 200);
   assert.equal((await orderOf(c.token)).photos.length, 1, 'ligado: a marcação libera');
-  await env.DB.prepare("INSERT OR REPLACE INTO config (key, value) VALUES ('claim_enabled', '0')").run();
+  await env.DB.prepare("INSERT OR REPLACE INTO event_config (event_id, key, value) VALUES (1, 'claim_enabled', '0')").run();
   const p = await orderOf(c.token);
   assert.equal(p.photos.length, 0, 'desligado: a marcação antiga não libera foto de outro atleta');
   assert.equal(p.claimEnabled, false);

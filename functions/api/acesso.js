@@ -17,8 +17,8 @@ export async function onRequestPost({ request, env }) {
   }
 
   const { results } = await env.DB.prepare(
-    `SELECT o.token, o.kind, o.status, o.amount_cents, o.pin_salt, o.pin_hash, a.name AS athlete_name
-     FROM orders o LEFT JOIN athletes a ON a.id = o.athlete_id
+    `SELECT o.token, o.kind, o.status, o.amount_cents, o.pin_salt, o.pin_hash, a.name AS athlete_name, ev.name AS event_name, ev.slug AS event_slug
+     FROM orders o LEFT JOIN athletes a ON a.id = o.athlete_id LEFT JOIN events ev ON ev.id = o.event_id
      WHERE o.whatsapp = ? AND o.pin_hash != '' AND o.status IN ('aguardando', 'pago', 'liberado')
      ORDER BY o.created_at DESC`
   ).bind(wpp).all();
@@ -35,5 +35,5 @@ export async function onRequestPost({ request, env }) {
     return bad('WhatsApp ou senha incorretos.', 401);
   }
   await env.DB.prepare('DELETE FROM access_attempts WHERE wpp = ?').bind(wpp).run();
-  return json({ orders: ok.map((o) => ({ token: o.token, athlete: o.athlete_name, kind: o.kind, status: o.status, amount: o.amount_cents })) });
+  return json({ orders: ok.map((o) => ({ token: o.token, athlete: o.athlete_name, eventName: o.event_name, kind: o.kind, status: o.status, amount: o.amount_cents })) });
 }
