@@ -23,7 +23,7 @@ export async function onRequestGet({ request, env }) {
 // { id, action: 'liberar' | 'verificar' }
 export async function onRequestPost({ request, env }) {
   if (!(await isAdmin(request, env))) return denied();
-  const { id, action, pin, athleteId } = await readJson(request);
+  const { id, action, pin, athleteId, force } = await readJson(request);
   const order = await getOrder(env, 'o.id', id);
   if (!order) return bad('Pedido não encontrado.', 404);
   if (action === 'verificar') {
@@ -38,6 +38,7 @@ export async function onRequestPost({ request, env }) {
     return json({ status: 'pago' });
   }
   if (action === 'excluir') {
+    if (['pago', 'liberado'].includes(order.status) && force !== true) return bad('Pedido pago: confirme a exclusão no painel.', 409);
     await env.DB.batch([
       env.DB.prepare('DELETE FROM order_photos WHERE order_id = ?').bind(id),
       env.DB.prepare('DELETE FROM orders WHERE id = ?').bind(id),

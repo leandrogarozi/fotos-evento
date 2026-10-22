@@ -98,7 +98,8 @@ test('painel: excluir pedido e trocar o atleta do pedido', async () => {
   assert.equal((await aOrders.onRequestPost({ request: post('/o', { id: alvo.id, action: 'atleta', athleteId: 99999 }, H), env })).status, 400);
   assert.equal((await aOrders.onRequestPost({ request: post('/o', { id: alvo.id, action: 'atleta', athleteId: 5 }, H), env })).status, 200);
   assert.equal((await list()).find((o) => o.id === alvo.id).athlete_name, 'Donovan Cardoso');
-  await aOrders.onRequestPost({ request: post('/o', { id: alvo.id, action: 'excluir' }, H), env });
+  assert.equal((await aOrders.onRequestPost({ request: post('/o', { id: alvo.id, action: 'excluir' }, H), env })).status, 409, 'pedido pago exige confirmação');
+  await aOrders.onRequestPost({ request: post('/o', { id: alvo.id, action: 'excluir', force: true }, H), env });
   assert.equal((await list()).length, antes.length - 1);
   assert.equal((await aOrders.onRequestPost({ request: post('/o', { id: alvo.id, action: 'excluir' }, H), env })).status, 404);
 });
