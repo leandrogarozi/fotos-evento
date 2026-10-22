@@ -3,7 +3,7 @@ import { normWpp, validPin, newPin } from '../_lib/pin.js';
 import { encryptPin } from '../_lib/secret.js';
 import { getConfig } from '../_lib/db.js';
 import { eventBySlug } from '../_lib/events.js';
-import { isPresale, allPrice, salesOpen } from '../_lib/pricing.js';
+import { isPresale, allPrice, salesOpen, packLimit } from '../_lib/pricing.js';
 import { createPreference } from '../_lib/mp.js';
 
 export async function onRequestPost({ request, env }) {
@@ -32,10 +32,10 @@ export async function onRequestPost({ request, env }) {
     kind: 'todas', amount_cents: allPrice(cfg), status: 'aguardando', created_at: new Date().toISOString(),
   };
   await env.DB.prepare(
-    `INSERT INTO orders (id, token, athlete_id, buyer_name, whatsapp, email, kind, amount_cents, status, created_at, presale, pin_salt, pin_hash, pin_enc, event_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)`
+    `INSERT INTO orders (id, token, athlete_id, buyer_name, whatsapp, email, kind, amount_cents, status, created_at, presale, pin_salt, pin_hash, pin_enc, event_id, pack_limit)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`
   ).bind(order.id, order.token, order.athlete_id, order.buyer_name, order.whatsapp, order.email,
-         order.kind, order.amount_cents, order.status, order.created_at, pin.salt, pin.hash, await encryptPin(env, b.pin), ev.id).run();
+         order.kind, order.amount_cents, order.status, order.created_at, pin.salt, pin.hash, await encryptPin(env, b.pin), ev.id, packLimit(cfg)).run();
 
   try {
     const pref = await createPreference(env, {

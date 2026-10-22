@@ -1,9 +1,10 @@
 import { json, bad, readJson, uid, token } from '../_lib/util.js';
 import { normWpp, validPin, newPin } from '../_lib/pin.js';
 import { encryptPin } from '../_lib/secret.js';
-import { getConfig } from '../_lib/db.js';
+import { getConfig, getOrder } from '../_lib/db.js';
 import { eventBySlug } from '../_lib/events.js';
-import { isPresale, allPrice, cartPrice, reais, salesOpen } from '../_lib/pricing.js';
+import { PAID } from '../_lib/access.js';
+import { isPresale, allPrice, cartPrice, reais, salesOpen, packLimit, packExtra } from '../_lib/pricing.js';
 import { createPreference } from '../_lib/mp.js';
 
 const MAX_PHOTOS = 300;
@@ -12,6 +13,7 @@ const MAX_PHOTOS = 300;
 export async function onRequestPost({ request, env }) {
   if (!env.MP_ACCESS_TOKEN) return bad('Pagamento ainda não configurado.', 503);
   const b = await readJson(request);
+  if (b.x) return extras(b, request, env);
   const name = String(b.name || '').trim().slice(0, 120);
   const whatsapp = normWpp(b.whatsapp);
   const email = String(b.email || '').trim().slice(0, 160);
@@ -57,15 +59,56 @@ export async function onRequestPost({ request, env }) {
   const order = { id: uid(), token: token(), created_at: new Date().toISOString() };
   const pin = await newPin(b.pin, whatsapp);
   const stmts = [env.DB.prepare(
-    `INSERT INTO orders (id, token, athlete_id, buyer_name, whatsapp, email, kind, amount_cents, status, created_at, presale, pin_salt, pin_hash, pin_enc, event_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'aguardando', ?, 0, ?, ?, ?, ?)`
-  ).bind(order.id, order.token, athlete ? athlete.id : null, name, whatsapp, email, kind, amount, order.created_at, pin.salt, pin.hash, await encryptPin(env, b.pin), ev.id)];
+    `INSERT INTO orders (id, token, athlete_id, buyer_name, whatsapp, email, kind, amount_cents, status, created_at, presale, pin_salt, pin_hash, pin_enc, event_id, pack_limit)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'aguardando', ?, 0, ?, ?, ?, ?, ?)`
+  ).bind(order.id, order.token, athlete ? athlete.id : null, name, whatsapp, email, kind, amount, order.created_at, pin.salt, pin.hash, await encryptPin(env, b.pin), ev.id, kind === 'todas' ? packLimit(cfg) : 0)];
   if (photoIds.length) stmts.push(env.DB.prepare('INSERT INTO order_photos (order_id, photo_id) SELECT ?, value FROM json_each(?)').bind(order.id, JSON.stringify(photoIds)));
   await env.DB.batch(stmts);
 
   try {
     const pref = await createPreference(env, {
       order: { ...order, amount_cents: amount, buyer_name: name }, title, origin: new URL(request.url).origin,
+    });
+    return json({ token: order.token, url: pref.init_point, total: reais(amount) });
+  } catch (e) {
+    await env.DB.prepare("UPDATE orders SET status = 'erro' WHERE id = ?").bind(order.id).run();
+    return bad(`Não consegui abrir o pagamento. ${String(e.message).slice(0, 200)}`, 502);
+  }
+}
+
+// Fotos adicionais de quem já comprou um pacote com limite: { x: token do pacote, photoIds, e }.
+// Vira um pedido de fotos avulsas (mesmos dados e mesma senha do pacote), cobrado por foto adicional.
+async function extras(b, request, env) {
+  const ev = await eventBySlug(env, b.e);
+  if (!ev) return bad('Evento não encontrado.', 404);
+  const cfg = await getConfig(env, ev.id);
+  if (ev.archived || !salesOpen(cfg)) return bad('As vendas foram encerradas.', 410);
+  const base = await getOrder(env, 'o.token', String(b.x));
+  if (!base || base.event_id !== ev.id || base.kind !== 'todas' || !base.pack_limit || !PAID.includes(base.status)) return bad('Pacote não encontrado.', 404);
+  const unit = packExtra(cfg);
+  if (unit < 100) return bad('Fotos adicionais não estão disponíveis.');
+  const photoIds = [...new Set((b.photoIds || []).map(String))];
+  if (!photoIds.length) return bad('Escolha pelo menos uma foto.');
+  if (photoIds.length > MAX_PHOTOS) return bad(`Escolha até ${MAX_PHOTOS} fotos por pedido.`);
+  const ok = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM photos p WHERE p.id IN (SELECT value FROM json_each(?)) AND p.has_orig = 1 AND p.has_prev = 1 AND p.event_id = ?
+       AND EXISTS (SELECT 1 FROM photo_athletes pa WHERE pa.photo_id = p.id AND pa.athlete_id = ?)
+       AND NOT EXISTS (SELECT 1 FROM order_photos op WHERE op.photo_id = p.id AND op.order_id = ?)`
+  ).bind(JSON.stringify(photoIds), ev.id, base.athlete_id, base.id).first();
+  if (ok.n !== photoIds.length) return bad('Alguma foto não está disponível ou já faz parte do seu pacote. Recarregue a página.');
+  const amount = photoIds.length * unit;
+  const order = { id: uid(), token: token(), created_at: new Date().toISOString() };
+  await env.DB.batch([
+    env.DB.prepare(
+      `INSERT INTO orders (id, token, athlete_id, buyer_name, whatsapp, email, kind, amount_cents, status, created_at, presale, pin_salt, pin_hash, pin_enc, event_id, pack_limit)
+       VALUES (?, ?, ?, ?, ?, ?, 'fotos', ?, 'aguardando', ?, 0, ?, ?, ?, ?, 0)`
+    ).bind(order.id, order.token, base.athlete_id, base.buyer_name, base.whatsapp, base.email, amount, order.created_at, base.pin_salt, base.pin_hash, base.pin_enc, ev.id),
+    env.DB.prepare('INSERT INTO order_photos (order_id, photo_id) SELECT ?, value FROM json_each(?)').bind(order.id, JSON.stringify(photoIds)),
+  ]);
+  try {
+    const pref = await createPreference(env, {
+      order: { ...order, amount_cents: amount, buyer_name: base.buyer_name },
+      title: `${photoIds.length} foto${photoIds.length > 1 ? 's' : ''} adicional${photoIds.length > 1 ? 'is' : ''} (${cfg.event_name})`, origin: new URL(request.url).origin,
     });
     return json({ token: order.token, url: pref.init_point, total: reais(amount) });
   } catch (e) {

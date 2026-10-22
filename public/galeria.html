@@ -71,7 +71,8 @@ const CLAIM = Q.get('claim') || '';
 const E = Q.get('e') || '';
 const eq = E ? '?e=' + encodeURIComponent(E) : '', eand = E ? '&e=' + encodeURIComponent(E) : '';
 document.querySelectorAll('a[href="index.html"]').forEach((x) => { x.href = 'index.html' + eq; });
-const KEY = 'sel:' + A;
+const X = Q.get('x') || ''; // modo fotos adicionais: token do pacote já comprado
+const KEY = (X ? 'selx:' + X : 'sel:' + A);
 let claimMax = 0; // 0 = sem limite
 let ev, ids = [], sel = new Set(), quote = null, idx = 0, mode = 'cart', qt;
 
@@ -84,10 +85,10 @@ function header() {
   const dl = ev.deadline, T = ev.texts || {};
   $('root').innerHTML = `
     <div class="eyebrow">${esc(ev.eventName)}</div>
-    <h1>${tTitle(CLAIM ? T.txt_claim_title : ath ? T.txt_gallery_title_athlete : T.txt_gallery_title, { nome: first })}</h1>
-    <p class="lead">${CLAIM ? tLead(T.txt_claim_lead) : (ath ? `Você aparece em <b>${ids.length}</b> foto${ids.length === 1 ? '' : 's'}. ` : '') + tLead(T.txt_gallery_lead)}</p>
+    <h1>${X ? 'Fotos <em>adicionais</em>' : tTitle(CLAIM ? T.txt_claim_title : ath ? T.txt_gallery_title_athlete : T.txt_gallery_title, { nome: first })}</h1>
+    <p class="lead">${X ? `Estas são as outras fotos de <b>${esc(first)}</b>. Cada foto adicional custa <b>${reais(ev.packExtra)}</b>.` : CLAIM ? tLead(T.txt_claim_lead) : (ath ? `Você aparece em <b>${ids.length}</b> foto${ids.length === 1 ? '' : 's'}. ` : '') + tLead(T.txt_gallery_lead)}</p>
     ${!CLAIM && ev.salesEnd ? `<div class="box sage" style="max-width:560px;font-size:15px"><b>Vendas encerram em ${fmt(ev.salesEnd)}</b>. Depois disso não será possível comprar.</div>` : ''}
-    ${!CLAIM && ath && dl.until ? `<div class="box sage" style="max-width:560px">Pacote completo por ${reais(ev.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}.</div>` : ''}
+    ${!CLAIM && !X && ath && dl.until ? `<div class="box sage" style="max-width:560px">Pacote completo${ev.packLimit ? ' (até ' + ev.packLimit + ' fotos, adicionais ' + reais(ev.packExtra) + ' cada)' : ''} por ${reais(ev.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}.</div>` : ''}
     <div class="grid" id="grid"></div>`;
   $('grid').innerHTML = ids.map((id) => `<div class="ph" data-id="${id}"><img src="/img/${id}" loading="lazy" alt="" draggable="false"><button class="heart" aria-label="Escolher foto">♡</button></div>`).join('');
   $('grid').querySelectorAll('.ph').forEach((el) => {
@@ -117,11 +118,13 @@ function requote() {
     $('bar').style.display = ids.length ? '' : 'none';
     $('cnt').textContent = n ? `${n} foto${n > 1 ? 's' : ''}` : 'Nenhuma foto escolhida';
     $('fin').disabled = !n;
-    if (!n) { $('total').textContent = reais(0); $('msg').innerHTML = '<div class="msg soft">Toque no coração para escolher suas fotos.</div>'; quote = null; return; }
-    const r = await (await fetch(`/api/quote?n=${n}${A ? '&athlete=' + A : ''}${eand}`)).json();
+    if (!n) { $('total').textContent = reais(0); $('msg').innerHTML = (X ? `<div class="msg soft">Toque no coração das fotos que quer levar a mais. Cada foto adicional custa ${reais(ev.packExtra)}.</div>` : '<div class="msg soft">Toque no coração para escolher suas fotos.</div>'); quote = null; return; }
+    const r = await (await fetch(`/api/quote?n=${n}${A ? '&athlete=' + A : ''}${X ? '&x=1' : ''}${eand}`)).json();
     quote = r; $('total').textContent = reais(r.total);
     let m = '';
-    if (r.kind === 'all') m = `<div class="msg">Você leva todas as fotos${A ? ' do atleta' : ''}, inclusive as que não escolheu.</div>`;
+    if (X) m = `<div class="msg soft">Foto adicional: ${reais(ev.packExtra)} cada.</div>`;
+    else if (r.pack) m = `<div class="msg soft">Pacote de até ${ev.packLimit} fotos${r.extras ? ` + ${r.extras} foto${r.extras > 1 ? 's' : ''} adiciona${r.extras > 1 ? 'is' : 'l'} a ${reais(ev.packExtra)}` : ''}.</div>`;
+    else if (r.kind === 'all') m = `<div class="msg">Você leva todas as fotos${A ? ' do atleta' : ''}, inclusive as que não escolheu.</div>`;
     else if (r.freeExtra > 0 && !r.upsell) m = `<div class="msg soft">Você ainda pode escolher mais ${r.freeExtra} foto${r.freeExtra > 1 ? 's' : ''} sem pagar a mais.</div>`;
     if (r.upsell && r.kind !== 'all') m = `<div class="msg"><span>Você aparece em ${ids.length} fotos. Por mais ${reais(r.upsell.extra)} leva todas.</span><button class="small" id="all">Quero todas</button></div>` + (r.freeExtra > 0 ? `<div class="hint">Você ainda pode escolher mais ${r.freeExtra} foto${r.freeExtra > 1 ? 's' : ''} sem pagar a mais.</div>` : '');
     $('msg').innerHTML = m;
@@ -155,6 +158,15 @@ function openSheet(m) {
   $('err').textContent = ''; $('sheet').classList.add('open');
 }
 $('fin').onclick = async () => {
+  if (X) {
+    $('fin').disabled = true;
+    try {
+      const r = await fetch('/api/checkout', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ e: E, x: X, photoIds: [...sel] }) });
+      const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Erro');
+      location.href = d.url;
+    } catch (e) { alert(e.message); $('fin').disabled = false; }
+    return;
+  }
   if (!CLAIM) return openSheet('cart');
   $('fin').disabled = true;
   try {
@@ -177,9 +189,9 @@ $('f').addEventListener('submit', async (x) => {
   } catch (e) { $('err').textContent = e.message; $('pay').disabled = false; }
 });
 
-Promise.all([fetch('/api/event' + eq).then((r) => r.json()), fetch('/api/photos?' + (A && !CLAIM ? 'athlete=' + A + '&' : '') + 'e=' + encodeURIComponent(E)).then((r) => r.json()), A && !CLAIM ? fetch('/api/photos?e=' + encodeURIComponent(E)).then((r) => r.json()) : Promise.resolve(null), CLAIM ? fetch('/api/pedido/' + encodeURIComponent(CLAIM)).then((r) => r.json()) : Promise.resolve(null)]).then(([e, p, all, ped]) => {
+Promise.all([fetch('/api/event' + eq).then((r) => r.json()), fetch('/api/photos?' + (A && !CLAIM ? 'athlete=' + A + '&' : '') + 'e=' + encodeURIComponent(E)).then((r) => r.json()), A && !CLAIM ? fetch('/api/photos?e=' + encodeURIComponent(E)).then((r) => r.json()) : Promise.resolve(null), CLAIM || X ? fetch('/api/pedido/' + encodeURIComponent(CLAIM || X)).then((r) => r.json()) : Promise.resolve(null)]).then(([e, p, all, ped]) => {
   if (e.error) { $('root').innerHTML = '<h1 style="margin-top:40px">Evento <em>não encontrado</em></h1>'; return; }
-  ev = e; ids = p.photos; claimMax = e.claimMax || 0; sel = new Set(CLAIM ? ((ped && ped.claimed) || []).filter((id) => ids.includes(id)) : load().filter((id) => ids.includes(id)));
+  ev = e; ids = p.photos; if (X && ped) { const own = new Set((ped.photos || []).map((x) => x.id)); ids = ids.filter((id) => !own.has(id)); } claimMax = e.claimMax || 0; sel = new Set(CLAIM ? ((ped && ped.claimed) || []).filter((id) => ids.includes(id)) : load().filter((id) => ids.includes(id)));
   document.title = 'Fotos: ' + e.eventName;
   if (CLAIM && !e.claimEnabled) { $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Estamos separando <em>suas fotos</em></h1><p class="lead">As fotos são identificadas por atleta e aparecem na sua página do pedido assim que ficarem prontas.</p><a class="btn go full" style="width:100%" href="pedido.html?t=${encodeURIComponent(CLAIM)}">Voltar ao meu pedido</a>`; return; }
   if (e.salesClosed && !CLAIM) { $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>${tTitle(e.texts.txt_closed_title)}</h1><p class="lead">${tLead(e.texts.txt_closed_lead)}</p><a class="btn go full" style="width:100%" href="acesso.html">Já comprei, acessar minhas fotos</a>`; return; }
@@ -187,7 +199,7 @@ Promise.all([fetch('/api/event' + eq).then((r) => r.json()), fetch('/api/photos?
     const ath = e.athletes.find((a) => a.id === A); const first = ath ? ath.name.split(' ')[0] : '';
     $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Fotos de <em>${esc(first)}</em></h1>
       <p class="lead">${e.claimEnabled ? 'Ainda não separamos as fotos por atleta. Você tem duas opções:' : 'As fotos deste atleta ainda estão sendo separadas. Você pode:'}</p>
-      <div class="card"><h2>Pacote completo: ${reais(e.allPrice)}</h2><p class="muted" style="font-size:14px">${e.claimEnabled ? 'Você paga e marca no site as fotos em que aparece, sem marca d\'água.' : 'Você paga agora e as fotos aparecem na sua página assim que forem identificadas, sem marca d\'água.'}</p><button class="go full" id="buyall">Quero o pacote completo</button></div>
+      <div class="card"><h2>Pacote completo${e.packLimit ? ' (até ' + e.packLimit + ' fotos)' : ''}: ${reais(e.allPrice)}</h2><p class="muted" style="font-size:14px">${e.claimEnabled ? 'Você paga e marca no site as fotos em que aparece, sem marca d\'água.' : 'Você paga agora e as fotos aparecem na sua página assim que forem identificadas, sem marca d\'água.'}</p><button class="go full" id="buyall">Quero o pacote completo</button></div>
       <div class="card" style="background:var(--card2);border:0"><h2>Fotos avulsas</h2><p class="muted" style="font-size:14px">${(e.tiers || []).map((t) => t.n + ' foto' + (t.n > 1 ? 's' : '') + ' ' + reais(t.cents)).join(' · ')}. Veja todas as fotos e escolha as suas.</p><a class="btn light full" style="width:100%" href="galeria.html${eq}">Ver todas as fotos</a></div>`;
     $('buyall').onclick = () => openSheet('all');
     return;

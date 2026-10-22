@@ -10,7 +10,13 @@ const READY = 'p.has_orig = 1 AND p.has_prev = 1';
 export async function orderPhotos(env, order) {
   if (!PAID.includes(order.status)) return [];
   let q;
-  if (order.kind === 'todas') {
+  if (order.kind === 'todas' && order.pack_limit > 0) {
+    // Pacote com limite: se o atleta tem até `limite` fotos, todas liberam; senão, só as que o comprador escolheu.
+    const t = await taggedCount(env, order);
+    q = t <= order.pack_limit
+      ? [`SELECT p.id, p.filename FROM photos p WHERE ${READY} AND p.event_id = ? AND EXISTS (SELECT 1 FROM photo_athletes pa WHERE pa.photo_id = p.id AND pa.athlete_id = ?) ORDER BY p.filename`, [order.event_id, order.athlete_id]]
+      : [`SELECT p.id, p.filename FROM photos p JOIN order_photos op ON op.photo_id = p.id WHERE op.order_id = ? AND ${READY} ORDER BY p.filename`, [order.id]];
+  } else if (order.kind === 'todas') {
     const cfg = await getConfig(env, order.event_id);
     const claims = Number(cfg.claim_enabled) === 1; // marcações livres só contam se estiver ligado
     const gen = Number(cfg.pack_includes_general) === 1; // fotos gerais só entram no pacote se estiver ligado
@@ -25,6 +31,12 @@ export async function orderPhotos(env, order) {
   }
   const { results } = await env.DB.prepare(q[0]).bind(...q[1]).all();
   return results;
+}
+
+// Quantas fotos prontas estão identificadas para o atleta do pedido.
+export async function taggedCount(env, order) {
+  const r = await env.DB.prepare(`SELECT COUNT(*) AS n FROM photos p WHERE ${READY} AND p.event_id = ? AND EXISTS (SELECT 1 FROM photo_athletes pa WHERE pa.photo_id = p.id AND pa.athlete_id = ?)`).bind(order.event_id, order.athlete_id).first();
+  return r.n;
 }
 
 export async function photoAllowed(env, order, photoId) {

@@ -30,6 +30,8 @@ function tickSales() {
   el.textContent = `faltam ${d ? d + (d > 1 ? ' dias ' : ' dia ') : ''}${h}h ${m}min`;
 }
 const tierRows = (e) => (e.tiers || []).map((t) => `<div><span>${t.n} foto${t.n > 1 ? 's' : ''}</span><b>${reais(t.cents)}</b></div>`).join('');
+const packName = (e) => e.packLimit ? `Pacote completo, até ${e.packLimit} fotos do atleta` : 'Pacote completo, todas as fotos do atleta';
+const extraRow = (e) => e.packLimit ? `<div><span>Foto adicional (acima de ${e.packLimit})</span><b>${reais(e.packExtra)}</b></div>` : '';
 const salesBox = (e) => e.salesEnd ? `<div class="box sage" style="margin-top:22px;font-size:16px"><b>Vendas encerram em ${fmt(e.salesEnd)}</b><br><span id="sc" style="font-size:14px"></span><br><span style="font-size:13px">Depois dessa data não será possível comprar.</span></div>` : '';
 function closedView(e) {
   $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>${tTitle(e.texts.txt_closed_title)}</h1>
@@ -48,8 +50,9 @@ function presaleView(e) {
     <p class="lead">${tLead(e.texts.txt_presale_lead)}</p>
     ${salesBox(e)}
     <div class="card">
-      <div class="muted" style="font-size:14px">Pacote completo, todas as fotos do atleta</div>
+      <div class="muted" style="font-size:14px">${packName(e)}</div>
       <div class="price">${reais(e.allPrice)}</div>
+      ${e.packLimit ? `<div class="muted" style="font-size:14px;margin-top:2px">Fotos adicionais: <b>${reais(e.packExtra)}</b> cada</div>` : ''}
       <div class="row" style="margin-top:6px"><span class="chip" id="count"></span><span class="muted" style="font-size:13px">Depois: ${reais(e.deadline.next)}</span></div>
       <form id="f" style="margin-top:22px">
         <label>De quem são as fotos</label>
@@ -68,8 +71,8 @@ function presaleView(e) {
     <div class="card" style="background:var(--card2);border:0">
       <h2>${esc(e.texts.txt_presale_after_title)}</h2>
       <p class="muted" style="font-size:14px;margin-bottom:4px">${tLead(e.texts.txt_presale_after_note)}</p>
-      <div class="prices">${tierRows(e)}${e.deadline && e.deadline.next ? `<div><span>Pacote completo (todas as fotos do atleta)</span><b>${reais(e.deadline.next)}</b></div>` : ''}</div>
-      <div class="box sage" style="margin-top:12px">Na pré-venda o pacote completo sai por <b>${reais(e.allPrice)}</b>.</div>
+      <div class="prices">${tierRows(e)}${e.deadline && e.deadline.next ? `<div><span>${e.packLimit ? 'Pacote completo (até ' + e.packLimit + ' fotos)' : 'Pacote completo (todas as fotos do atleta)'}</span><b>${reais(e.deadline.next)}</b></div>` : ''}${extraRow(e)}</div>
+      <div class="box sage" style="margin-top:12px">Na pré-venda o pacote completo${e.packLimit ? ' (até ' + e.packLimit + ' fotos)' : ''} sai por <b>${reais(e.allPrice)}</b>.</div>
     </div>
     <div class="card" style="background:var(--card2);border:0">
       <h2>Como funciona</h2>
@@ -111,7 +114,8 @@ function storeView(e) {
       <h2>Quanto custa</h2>
       <div class="prices">
         ${tierRows(e)}
-        <div><span>Todas as fotos do atleta</span><b>${reais(e.allPrice)}</b></div>
+        <div><span>${e.packLimit ? 'Pacote completo (até ' + e.packLimit + ' fotos)' : 'Todas as fotos do atleta'}</span><b>${reais(e.allPrice)}</b></div>
+        ${extraRow(e)}
       </div>
       ${dl.until ? `<div class="box sage">Pacote completo por ${reais(e.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}. <span id="count" class="chip" style="margin-left:6px"></span></div>` : ''}
     </div>`;

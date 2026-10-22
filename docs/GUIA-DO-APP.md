@@ -202,3 +202,16 @@ O que seria novo: sessão por cliente (um "evento" por ensaio, com cota COM/SEM 
 ## 13. Histórico de decisões recentes (22/10/2026)
 - Layout: uma proposta mais limpa (Inter, grade de 3 colunas) foi montada na branch `layout-limpo`, mas o Leandro preferiu manter o visual atual. A branch fica parada, sem publicar.
 - Vários eventos ao mesmo tempo: adiado. Hoje é um evento por vez (nome e textos editáveis no painel); para o Vida Ativa, trocar nome, textos e atletas e limpar fotos e pedidos antigos.
+
+## Vários eventos (caixa "Evento" no painel)
+- No topo do painel há a caixa **Evento**. Tudo (pedidos, preços, fotos, atletas, links) vale para o evento escolhido.
+- **+ Novo evento** cria uma galeria nova, com atletas, fotos e preços próprios (pode copiar preços e textos do evento atual).
+- O evento principal abre sem nada no link; os outros abrem com `?e=apelido` (a aba "Link e QR" mostra o link certo de cada um).
+- Banco: tabelas `events` e `event_config`; colunas `event_id` em atletas, fotos e pedidos (migração 0007).
+
+## Pacote com limite de fotos
+- Em "Preços e datas": **Pacote completo vale até quantas fotos** (0 = todas, sem limite) e **Foto adicional** (preço de cada foto acima do limite, mínimo R$ 1). Só liga se os dois estiverem preenchidos.
+- Pré-venda: paga o pacote; depois, se o atleta tem mais fotos que o limite, a pessoa escolhe as dela na página do pedido (uma vez, não troca). Se tem até o limite, libera tudo sozinho.
+- Fotos adicionais: botão na página do pedido, R$ por foto, vira um pedido novo ligado ao pacote (mesma senha).
+- Na galeria (depois da pré-venda) o carrinho cobra o menor valor entre pacote + adicionais e as fotos avulsas.
+- O limite vale no pedido pela regra da hora da compra (coluna `orders.pack_limit`, migração 0008): mudar o limite não altera quem já comprou.
