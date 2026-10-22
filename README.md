@@ -54,3 +54,6 @@ Quando o Mercado Pago confirma, o comprador recebe um e-mail com WhatsApp, senha
 4. **Implantações** → Retry na linha mais recente.
 
 Sem essas variáveis o site funciona normal, só não envia e-mail. A senha fica criptografada no banco só até o e-mail sair; depois é apagada.
+
+## Atenção ao publicar (Cloudflare)
+O botão **Retry deployment** refaz o commit **da linha em que você clica** e a coloca como versão ativa. Clicar numa linha antiga recoloca uma versão velha no ar. Para publicar a versão mais nova, deixe o push para o GitHub disparar o deploy sozinho e só use Retry na linha de **cima** da lista.
