@@ -89,3 +89,16 @@ test('compra pela loja também exige e-mail', async () => {
   const r = await checkout.onRequestPost({ request: post('/c', { athleteId: 1, all: true, name: 'Rui', whatsapp: '27966665555', pin: '1234' }), env });
   assert.equal(r.status, 400);
 });
+
+test('painel: excluir pedido e trocar o atleta do pedido', async () => {
+  const { token } = await (await login.onRequestPost({ request: post('/l', { password: 'segredo' }), env })).json();
+  const H = { authorization: 'Bearer ' + token };
+  const list = async () => (await (await aOrders.onRequestGet({ request: req('/o', { headers: H }), env })).json()).orders;
+  const antes = await list(); const alvo = antes[0];
+  assert.equal((await aOrders.onRequestPost({ request: post('/o', { id: alvo.id, action: 'atleta', athleteId: 99999 }, H), env })).status, 400);
+  assert.equal((await aOrders.onRequestPost({ request: post('/o', { id: alvo.id, action: 'atleta', athleteId: 5 }, H), env })).status, 200);
+  assert.equal((await list()).find((o) => o.id === alvo.id).athlete_name, 'Donovan Cardoso');
+  await aOrders.onRequestPost({ request: post('/o', { id: alvo.id, action: 'excluir' }, H), env });
+  assert.equal((await list()).length, antes.length - 1);
+  assert.equal((await aOrders.onRequestPost({ request: post('/o', { id: alvo.id, action: 'excluir' }, H), env })).status, 404);
+});

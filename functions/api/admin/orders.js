@@ -23,7 +23,7 @@ export async function onRequestGet({ request, env }) {
 // { id, action: 'liberar' | 'verificar' }
 export async function onRequestPost({ request, env }) {
   if (!(await isAdmin(request, env))) return denied();
-  const { id, action, pin } = await readJson(request);
+  const { id, action, pin, athleteId } = await readJson(request);
   const order = await getOrder(env, 'o.id', id);
   if (!order) return bad('Pedido não encontrado.', 404);
   if (action === 'verificar') {
@@ -36,6 +36,19 @@ export async function onRequestPost({ request, env }) {
     ).bind(new Date().toISOString(), id).run();
     if (order.status === 'aguardando') await notifyPaid(env, id, new URL(request.url).origin);
     return json({ status: 'pago' });
+  }
+  if (action === 'excluir') {
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM order_photos WHERE order_id = ?').bind(id),
+      env.DB.prepare('DELETE FROM orders WHERE id = ?').bind(id),
+    ]);
+    return json({ ok: true });
+  }
+  if (action === 'atleta') {
+    const a = await env.DB.prepare('SELECT id FROM athletes WHERE id = ?').bind(Number(athleteId)).first();
+    if (!a) return bad('Atleta não encontrado.');
+    await env.DB.prepare('UPDATE orders SET athlete_id = ? WHERE id = ?').bind(a.id, id).run();
+    return json({ ok: true });
   }
   if (action === 'senha') {
     if (!validPin(pin)) return bad('A senha tem de 4 a 6 números.');
