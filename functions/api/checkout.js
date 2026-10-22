@@ -4,7 +4,7 @@ import { encryptPin } from '../_lib/secret.js';
 import { getConfig, getOrder } from '../_lib/db.js';
 import { eventBySlug } from '../_lib/events.js';
 import { PAID } from '../_lib/access.js';
-import { isPresale, allPrice, cartPrice, reais, salesOpen, packLimit, packExtra } from '../_lib/pricing.js';
+import { isPresale, allPrice, cartPrice, reais, salesOpen, packLimit, extraUnit } from '../_lib/pricing.js';
 import { createPreference } from '../_lib/mp.js';
 
 const MAX_PHOTOS = 300;
@@ -85,7 +85,7 @@ async function extras(b, request, env) {
   if (ev.archived || !salesOpen(cfg)) return bad('As vendas foram encerradas.', 410);
   const base = await getOrder(env, 'o.token', String(b.x));
   if (!base || base.event_id !== ev.id || base.kind !== 'todas' || !base.pack_limit || !PAID.includes(base.status)) return bad('Pacote não encontrado.', 404);
-  const unit = packExtra(cfg);
+  const unit = extraUnit(cfg);
   if (unit < 100) return bad('Fotos adicionais não estão disponíveis.');
   const photoIds = [...new Set((b.photoIds || []).map(String))];
   if (!photoIds.length) return bad('Escolha pelo menos uma foto.');

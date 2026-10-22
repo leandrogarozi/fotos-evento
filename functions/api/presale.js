@@ -35,7 +35,7 @@ export async function onRequestPost({ request, env }) {
     `INSERT INTO orders (id, token, athlete_id, buyer_name, whatsapp, email, kind, amount_cents, status, created_at, presale, pin_salt, pin_hash, pin_enc, event_id, pack_limit)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`
   ).bind(order.id, order.token, order.athlete_id, order.buyer_name, order.whatsapp, order.email,
-         order.kind, order.amount_cents, order.status, order.created_at, pin.salt, pin.hash, await encryptPin(env, b.pin), ev.id, packLimit(cfg)).run();
+         order.kind, order.amount_cents, order.status, order.created_at, pin.salt, pin.hash, await encryptPin(env, b.pin), ev.id, packLimit(cfg, Date.now())).run();
 
   try {
     const pref = await createPreference(env, {

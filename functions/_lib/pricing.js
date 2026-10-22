@@ -25,8 +25,10 @@ export const DEFAULTS = {
   // 1 = o pacote completo também inclui as fotos gerais (torcida, ambiente). Padrão: só as fotos do atleta.
   pack_includes_general: 0,
   // Pacote com limite: vale até pack_limit fotos (0 = todas, sem limite); cada foto além disso custa pack_extra_cents.
-  pack_limit: 0,
+  pack_limit: 0, // depois da pré-venda
   pack_extra_cents: 0,
+  presale_limit: 0, // na pré-venda
+  presale_extra_cents: 0,
   // Encerramento das vendas: data fixa (sales_end) ou N dias depois de published_at (sales_days).
   sales_end: '',
   sales_days: 0,
@@ -48,7 +50,7 @@ export const DEFAULTS = {
 
 export const NUMERIC_KEYS = [
   'presale_price_cents', 'price_one_cents', 'price_four_cents',
-  'price_all_event_cents', 'price_all_late_cents', 'late_after_days', 'price_box_cents', 'claim_max', 'claim_enabled', 'pack_includes_general', 'sales_days', 'pack_limit', 'pack_extra_cents',
+  'price_all_event_cents', 'price_all_late_cents', 'late_after_days', 'price_box_cents', 'claim_max', 'claim_enabled', 'pack_includes_general', 'sales_days', 'pack_limit', 'pack_extra_cents', 'presale_limit', 'presale_extra_cents',
 ];
 
 export function mergeConfig(rows) {
@@ -91,11 +93,18 @@ export function allPriceDeadline(cfg, now = Date.now()) {
   return { until: null, next: null };
 }
 
-// Pacote com limite ligado? (limite > 0 e preço da foto adicional definido)
-export const packLimit = (cfg) => (Number(cfg.pack_limit) > 0 && Number(cfg.pack_extra_cents) >= 100 ? Math.floor(Number(cfg.pack_limit)) : 0);
-export const packExtra = (cfg) => Math.max(0, Math.round(Number(cfg.pack_extra_cents) || 0));
+// Pacote com limite: cada fase (pré-venda e depois) tem o seu limite e o seu preço da foto adicional.
+// Só liga se o limite for > 0 e a foto adicional custar pelo menos R$ 1,00.
+export const packPhase = (cfg, presale) => {
+  const l = Number(presale ? cfg.presale_limit : cfg.pack_limit), x = Math.max(0, Math.round(Number(presale ? cfg.presale_extra_cents : cfg.pack_extra_cents) || 0));
+  return l > 0 && x >= 100 ? { limit: Math.floor(l), extra: x } : { limit: 0, extra: 0 };
+};
+export const packLimit = (cfg, now = Date.now()) => packPhase(cfg, isPresale(cfg, now)).limit;
+export const packExtra = (cfg, now = Date.now()) => packPhase(cfg, isPresale(cfg, now)).extra;
+// Preço da foto adicional de quem já tem um pacote: o da fase atual, ou o da outra se a atual não tiver.
+export const extraUnit = (cfg, now = Date.now()) => packExtra(cfg, now) || packPhase(cfg, true).extra || packPhase(cfg, false).extra;
 // Preço do pacote com limite para n fotos: pacote + fotos adicionais.
-export const packTotal = (n, cfg, now = Date.now()) => allPrice(cfg, now) + Math.max(0, n - packLimit(cfg)) * packExtra(cfg);
+export const packTotal = (n, cfg, now = Date.now()) => allPrice(cfg, now) + Math.max(0, n - packLimit(cfg, now)) * packExtra(cfg, now);
 
 // Menor preço para n fotos de um atleta, combinando os pacotes avulsos configurados e o pacote "todas".
 // opts.allowAll=false: galeria geral (sem atleta), onde não existe pacote "todas".
@@ -114,7 +123,7 @@ export function cartPrice(n, cfg, now = Date.now(), opts = {}) {
     cost[j] = bc; cov[j] = bv;
   }
   const total = cost[n];
-  const lim = packLimit(cfg);
+  const lim = packLimit(cfg, now);
   if (allowAll && lim) {
     // Com limite não existe "todas": o pacote cobre até `lim` fotos escolhidas e o resto sai por foto adicional.
     const pk = packTotal(n, cfg, now);

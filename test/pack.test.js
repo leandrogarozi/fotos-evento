@@ -37,12 +37,12 @@ const get = async (t) => (await pedido.onRequestGet({ params: { token: t }, requ
 const buyer = { name: 'Maria', pin: '1234', email: 'a@b.com', whatsapp: '27999991234' };
 
 test('a página mostra o limite e o preço da foto adicional', async () => {
-  await cfg('pack_limit', 3); await cfg('pack_extra_cents', 200);
+  await cfg('pack_limit', 3); await cfg('pack_extra_cents', 200); await cfg('presale_limit', 3); await cfg('presale_extra_cents', 200);
   const e = await (await event.onRequestGet({ request: req('/api/event'), env })).json();
   assert.equal(e.packLimit, 3); assert.equal(e.packExtra, 200);
-  await cfg('pack_extra_cents', 0); // sem preço da foto adicional o limite não liga
+  await cfg('pack_extra_cents', 0); await cfg('presale_extra_cents', 0); // sem preço da foto adicional o limite não liga
   assert.equal((await (await event.onRequestGet({ request: req('/api/event'), env })).json()).packLimit, 0);
-  await cfg('pack_extra_cents', 200);
+  await cfg('pack_extra_cents', 200); await cfg('presale_extra_cents', 200);
 });
 
 test('pré-venda: atleta com até N fotos recebe todas; com mais, escolhe N (uma vez)', async () => {
@@ -81,14 +81,14 @@ test('fotos adicionais: R$ 2 cada, pedido ligado ao pacote e sem repetir foto', 
 });
 
 test('pedido feito antes do limite continua sem limite', async () => {
-  await cfg('pack_limit', 0);
+  await cfg('pack_limit', 0); await cfg('presale_limit', 0);
   const old = await (await presale.onRequestPost({ request: post('/api/presale', { athleteId: 1, ...buyer }), env })).json();
   await pay(5000);
-  await cfg('pack_limit', 2);
+  await cfg('pack_limit', 2); await cfg('presale_limit', 2);
   const p = await get(old.token);
   assert.equal(p.photos.length, 5, 'comprou sem limite: leva todas as fotos do atleta');
   assert.equal(p.pick, null);
-  await cfg('pack_limit', 3);
+  await cfg('pack_limit', 3); await cfg('presale_limit', 3);
 });
 
 test('cotação na galeria: pacote + adicionais x pacotes avulsos', async () => {

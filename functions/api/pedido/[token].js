@@ -1,6 +1,6 @@
 import { json, bad } from '../../_lib/util.js';
 import { getOrder, getConfig } from '../../_lib/db.js';
-import { packExtra } from '../../_lib/pricing.js';
+import { extraUnit } from '../../_lib/pricing.js';
 import { syncOrder } from '../../_lib/sync.js';
 import { orderPhotos, dlQuery, taggedCount } from '../../_lib/access.js';
 
@@ -24,7 +24,7 @@ export async function onRequestGet({ params, request, env }) {
     const total = await taggedCount(env, order);
     if (total > order.pack_limit) {
       const chosen = (await env.DB.prepare('SELECT COUNT(*) AS n FROM order_photos WHERE order_id = ?').bind(order.id).first()).n;
-      pick = { limit: order.pack_limit, total, chosen, extra: packExtra(cfg) };
+      pick = { limit: order.pack_limit, total, chosen, extra: extraUnit(cfg) };
       if (!chosen) {
         const { results } = await env.DB.prepare(
           `SELECT p.id, p.filename FROM photos p WHERE p.has_orig = 1 AND p.has_prev = 1 AND p.event_id = ? AND EXISTS (SELECT 1 FROM photo_athletes pa WHERE pa.photo_id = p.id AND pa.athlete_id = ?) ORDER BY p.filename`

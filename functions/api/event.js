@@ -1,7 +1,7 @@
 import { json, bad } from '../_lib/util.js';
 import { getConfig } from '../_lib/db.js';
 import { eventBySlug, slugParam } from '../_lib/events.js';
-import { DEFAULTS, parseTiers, isPresale, allPrice, allPriceDeadline, packLimit, packExtra, salesCloseAt, salesOpen } from '../_lib/pricing.js';
+import { DEFAULTS, parseTiers, isPresale, allPrice, allPriceDeadline, packLimit, packExtra, packPhase, extraUnit, salesCloseAt, salesOpen } from '../_lib/pricing.js';
 
 export async function onRequestGet({ request, env }) {
   const ev = await eventBySlug(env, slugParam(request));
@@ -29,8 +29,10 @@ export async function onRequestGet({ request, env }) {
     salesClosed: !salesOpen(cfg, now) || !!ev.archived,
     presaleEnd: cfg.presale_end,
     allPrice: allPrice(cfg, now),
-    packLimit: packLimit(cfg),
-    packExtra: packExtra(cfg),
+    packLimit: packLimit(cfg, now),
+    packExtra: packExtra(cfg, now),
+    extraUnit: extraUnit(cfg, now),
+    packLater: packPhase(cfg, false),
     deadline: allPriceDeadline(cfg, now),
     athletes: results.sort(byName).map(({ id, name, turma }) => ({ id, name, turma })),
   });

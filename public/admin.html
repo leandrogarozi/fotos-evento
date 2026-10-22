@@ -2,12 +2,31 @@
 <html lang="pt-BR"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><title>Painel</title><link rel="stylesheet" href="style.css">
-<style>.wrap{max-width:900px}.tabs{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}.tabs button{background:var(--surface);color:var(--text);border:1px solid var(--border)}.tabs button.on{background:var(--dark);color:#fff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.grid{grid-template-columns:1fr}}</style>
+<style>.wrap{max-width:900px}.tabs{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}.tabs button{background:var(--surface);color:var(--text);border:1px solid var(--border)}.tabs button.on{background:var(--dark);color:#fff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.grid{grid-template-columns:1fr}}
+body{font-size:14px;line-height:1.45}
+.wrap{max-width:1000px;padding:14px 16px 48px}
+h1{font-size:clamp(24px,5vw,32px);margin-bottom:10px}
+h2{font-size:19px;margin-bottom:8px}
+.card{border-radius:16px;padding:16px 18px;margin-top:12px}
+label{font-size:12px;margin:10px 0 4px}
+input,select,textarea{padding:8px 11px;border-radius:10px;font-size:14px}
+select{background-position:calc(100% - 17px) 55%,calc(100% - 11px) 55%}
+button,.btn{min-height:36px;padding:0 16px;font-size:13px;gap:8px}
+button.small,.btn.small{min-height:30px;padding:0 12px;font-size:12px}
+.tabs{gap:6px;margin-top:12px}.tabs button{min-height:34px;padding:0 14px}
+.box{padding:8px 12px;font-size:13px;border-radius:10px}
+.g3{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 12px}.span2{grid-column:span 2}
+@media(max-width:760px){.g3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:480px){.g3{grid-template-columns:1fr}}
+.sec{grid-column:1/-1;margin:14px 0 0;padding:6px 10px;background:var(--paper);border-radius:8px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);font-weight:600}
+.sec span{display:block;text-transform:none;letter-spacing:0;font-weight:400;color:var(--mute);margin-top:2px}
+.full-w{grid-column:1/-1}
+</style>
 </head><body><div class="wrap">
 <h1>Painel <em>administrativo</em></h1>
 <div class="card" id="login"><label>Senha</label><input id="pw" type="password"><button class="full" id="ok">Entrar</button><div class="err" id="lerr"></div></div>
 <div id="app" style="display:none">
-  <div class="card" id="evbox" style="margin-top:0;padding:16px 20px"></div>
+  <div class="card" id="evbox" style="margin-top:0;padding:10px 14px"></div>
   <div class="tabs"><button data-t="orders" class="on">Pedidos</button><button data-t="config">Preços e datas</button><button data-t="photos">Fotos</button><button data-t="triage">Triagem</button><button data-t="athletes">Atletas</button><button data-t="link">Link e QR</button></div>
   <div class="card" id="orders"></div>
   <div class="card" id="config" style="display:none"></div>
@@ -39,7 +58,7 @@ async function loadEvents(selectId) {
 }
 function drawEvBox() {
   $('evbox').innerHTML = `<div class="row" style="gap:10px;flex-wrap:wrap"><span style="font-size:13px;font-weight:600;color:var(--mute)">EVENTO</span>
-    <select id="ev-sel" style="flex:1;min-width:200px;max-width:360px;font-weight:600">${EVENTS.map(e => `<option value="${e.id}" ${e.id === curEv.id ? 'selected' : ''}>${esc(e.name)}${e.is_main ? ' (principal)' : ''}${e.archived ? ' (arquivado)' : ''}</option>`).join('')}</select>
+    <select id="ev-sel" style="flex:1;min-width:240px;max-width:520px;font-weight:600;text-overflow:ellipsis">${EVENTS.map(e => `<option value="${e.id}" ${e.id === curEv.id ? 'selected' : ''}>${esc(e.name)}${e.is_main ? ' (principal)' : ''}${e.archived ? ' (arquivado)' : ''}</option>`).join('')}</select>
     <button class="small ghost" onclick="evEdit()">Configurar evento</button><button class="small" onclick="evNew()">+ Novo evento</button></div>
     <div class="muted" style="font-size:12px;margin-top:8px">Tudo abaixo (pedidos, preços, fotos, atletas e links) é do evento escolhido. Fotos: ${curEv.photos ?? 0} · Atletas: ${curEv.athletes ?? 0} · Pedidos pagos: ${curEv.paid ?? 0}</div>`;
   $('ev-sel').onchange = async () => { curEv = EVENTS.find(e => e.id === Number($('ev-sel').value)) || curEv; try { sessionStorage.setItem('adm_ev', String(curEv.id)); } catch (_) {} drawEvBox(); await refreshAll(); };
@@ -148,15 +167,16 @@ async function act(id, action) { try { await api('orders', { id, action }); lo()
 const FIELDS = [
   ['Evento'],
   ['event_name', 'Nome do evento', 'text'], ['event_date', 'Data do evento', 'date'], ['whatsapp', 'Seu WhatsApp (com 55)', 'text'], ['brand_text', 'Texto da marca d\'água', 'text'],
-  ['Preços (em R$)'],
-  ['presale_price_cents', 'Pacote completo na pré-venda', 'money'], ['price_tiers', 'Pacotes de fotos avulsas (quantidade e preço). O site cobra sempre o menor valor possível.', 'tiers'],
-  ['pack_limit', 'Pacote completo vale até quantas fotos? (0 = todas as fotos do atleta, sem limite)', 'number'], ['pack_extra_cents', 'Foto adicional acima desse limite (preço de cada uma; precisa ser R$ 1,00 ou mais para o limite funcionar)', 'money'],
-  ['price_all_event_cents', 'Pacote completo depois da pré-venda', 'money'], ['price_all_late_cents', 'Pacote completo depois do prazo', 'money'], ['price_box_cents', 'Pacote do box', 'money'],
-  ['Datas (horário de Brasília)'],
-  ['presale_end', 'Fim da pré-venda', 'datetime'], ['published_at', 'Fotos publicadas em (a partir daqui conta o prazo do preço)', 'datetime', true],
-  ['late_after_days', 'Dias com o preço "depois da pré-venda"', 'number'],
-  ['sales_end', 'Encerramento das vendas (data e hora)', 'datetime', true],
-  ['sales_days', 'Ou: dias de venda depois de "fotos publicadas" (0 = não usar)', 'number'],
+  ['Pré-venda','Vale até o fim da pré-venda. O pacote leva as fotos do atleta (todas, ou até o limite que você definir).'],
+  ['presale_price_cents', 'Valor do pacote completo', 'money'], ['presale_limit', 'Até quantas fotos (0 = todas)', 'number'], ['presale_extra_cents', 'Foto adicional (cada) acima do limite', 'money'],
+  ['presale_end', 'Fim da pré-venda', 'datetime'],
+  ['Fotos avulsas','Quem não leva o pacote escolhe quantas fotos quer. O site cobra sempre o menor valor possível.'],
+  ['price_tiers', 'Pacotes (quantidade e preço)', 'tiers'],
+  ['Depois da pré-venda','Valem quando a pré-venda terminar.'],
+  ['price_all_event_cents', 'Valor do pacote completo', 'money'], ['pack_limit', 'Até quantas fotos (0 = todas)', 'number'], ['pack_extra_cents', 'Foto adicional (cada) acima do limite', 'money'],
+  ['late_after_days', 'Dias com esse valor', 'number'], ['price_all_late_cents', 'Valor do pacote depois desse prazo', 'money'], ['price_box_cents', 'Pacote do box', 'money'],
+  ['Datas das vendas (horário de Brasília)'],
+  ['published_at', 'Fotos publicadas em (conta o prazo acima)', 'datetime', true], ['sales_end', 'Encerramento das vendas', 'datetime', true], ['sales_days', 'Ou: dias de venda após publicar (0 = não usar)', 'number'],
   ['Textos do site (use *asteriscos* para destacar: verde nos títulos, negrito nos textos)'],
   ['txt_presale_title', 'Pré-venda: título', 'textline'], ['txt_presale_lead', 'Pré-venda: texto', 'textarea'],
   ['txt_presale_after_title', 'Pré-venda: título da lista "depois da pré-venda"', 'textline'], ['txt_presale_after_note', 'Pré-venda: texto da lista "depois da pré-venda"', 'textarea'],
@@ -191,9 +211,9 @@ async function lc() {
   };
   const close = c.sales_end && Date.parse(c.sales_end) ? Date.parse(c.sales_end) : (c.published_at && Number(c.sales_days) > 0 && Date.parse(c.published_at) ? Date.parse(c.published_at) + Number(c.sales_days) * 864e5 : null);
   const eff = close ? 'Vendas encerram em <b>' + new Date(close).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }) + '</b>' + (close < Date.now() ? ' (já encerradas)' : '') : 'Sem encerramento definido: as vendas ficam abertas.';
-  $('config').innerHTML = '<h2>Preços e datas</h2><div class="box sage" style="margin:0 0 6px">' + eff + '</div><div class="grid">' + FIELDS.map(f => f.length === 1
-    ? `<h3 style="grid-column:1/-1;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:14px 0 0;font-weight:500">${f[0]}</h3>`
-    : `<div${f[2] === 'textarea' || f[2] === 'textline' || f[2] === 'tiers' || f[2] === 'toggle' ? ' style="grid-column:1/-1"' : ''}><label>${f[1]}</label>${input(f)}</div>`).join('') + '</div><button class="full" id="sv">Salvar</button><div class="err" id="cerr"></div>';
+  $('config').innerHTML = '<h2>Preços e datas</h2><div class="box sage" style="margin:0 0 6px">' + eff + '</div><div class="grid g3">' + FIELDS.map(f => f.length < 3
+    ? `<div class="sec">${f[0]}${f[1] ? '<span>' + f[1] + '</span>' : ''}</div>`
+    : `<div${f[2] === 'textarea' || f[2] === 'textline' || f[2] === 'tiers' || f[2] === 'toggle' ? ' class="full-w"' : (f[2] === 'datetime' && f[3]) || f[0] === 'event_name' ? ' class="span2"' : ''}><label>${f[1]}</label>${input(f)}</div>`).join('') + '</div><button class="full" id="sv">Salvar</button><div class="err" id="cerr"></div>';
   $('sv').onclick = async () => {
     const b = {}; let bad = '';
     document.querySelectorAll('#config [data-k]').forEach(i => {

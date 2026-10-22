@@ -210,7 +210,7 @@ O que seria novo: sessão por cliente (um "evento" por ensaio, com cota COM/SEM 
 - Banco: tabelas `events` e `event_config`; colunas `event_id` em atletas, fotos e pedidos (migração 0007).
 
 ## Pacote com limite de fotos
-- Em "Preços e datas": **Pacote completo vale até quantas fotos** (0 = todas, sem limite) e **Foto adicional** (preço de cada foto acima do limite, mínimo R$ 1). Só liga se os dois estiverem preenchidos.
+- Em "Preços e datas" há dois blocos separados: **Pré-venda** (valor, até quantas fotos, foto adicional) e **Depois da pré-venda** (idem). Limite 0 = todas as fotos. O limite só liga se a foto adicional custar pelo menos R$ 1,00.
 - Pré-venda: paga o pacote; depois, se o atleta tem mais fotos que o limite, a pessoa escolhe as dela na página do pedido (uma vez, não troca). Se tem até o limite, libera tudo sozinho.
 - Fotos adicionais: botão na página do pedido, R$ por foto, vira um pedido novo ligado ao pacote (mesma senha).
 - Na galeria (depois da pré-venda) o carrinho cobra o menor valor entre pacote + adicionais e as fotos avulsas.

@@ -86,7 +86,7 @@ function header() {
   $('root').innerHTML = `
     <div class="eyebrow">${esc(ev.eventName)}</div>
     <h1>${X ? 'Fotos <em>adicionais</em>' : tTitle(CLAIM ? T.txt_claim_title : ath ? T.txt_gallery_title_athlete : T.txt_gallery_title, { nome: first })}</h1>
-    <p class="lead">${X ? `Estas são as outras fotos de <b>${esc(first)}</b>. Cada foto adicional custa <b>${reais(ev.packExtra)}</b>.` : CLAIM ? tLead(T.txt_claim_lead) : (ath ? `Você aparece em <b>${ids.length}</b> foto${ids.length === 1 ? '' : 's'}. ` : '') + tLead(T.txt_gallery_lead)}</p>
+    <p class="lead">${X ? `Estas são as outras fotos de <b>${esc(first)}</b>. Cada foto adicional custa <b>${reais(ev.extraUnit)}</b>.` : CLAIM ? tLead(T.txt_claim_lead) : (ath ? `Você aparece em <b>${ids.length}</b> foto${ids.length === 1 ? '' : 's'}. ` : '') + tLead(T.txt_gallery_lead)}</p>
     ${!CLAIM && ev.salesEnd ? `<div class="box sage" style="max-width:560px;font-size:15px"><b>Vendas encerram em ${fmt(ev.salesEnd)}</b>. Depois disso não será possível comprar.</div>` : ''}
     ${!CLAIM && !X && ath && dl.until ? `<div class="box sage" style="max-width:560px">Pacote completo${ev.packLimit ? ' (até ' + ev.packLimit + ' fotos, adicionais ' + reais(ev.packExtra) + ' cada)' : ''} por ${reais(ev.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}.</div>` : ''}
     <div class="grid" id="grid"></div>`;
@@ -118,11 +118,11 @@ function requote() {
     $('bar').style.display = ids.length ? '' : 'none';
     $('cnt').textContent = n ? `${n} foto${n > 1 ? 's' : ''}` : 'Nenhuma foto escolhida';
     $('fin').disabled = !n;
-    if (!n) { $('total').textContent = reais(0); $('msg').innerHTML = (X ? `<div class="msg soft">Toque no coração das fotos que quer levar a mais. Cada foto adicional custa ${reais(ev.packExtra)}.</div>` : '<div class="msg soft">Toque no coração para escolher suas fotos.</div>'); quote = null; return; }
+    if (!n) { $('total').textContent = reais(0); $('msg').innerHTML = (X ? `<div class="msg soft">Toque no coração das fotos que quer levar a mais. Cada foto adicional custa ${reais(ev.extraUnit)}.</div>` : '<div class="msg soft">Toque no coração para escolher suas fotos.</div>'); quote = null; return; }
     const r = await (await fetch(`/api/quote?n=${n}${A ? '&athlete=' + A : ''}${X ? '&x=1' : ''}${eand}`)).json();
     quote = r; $('total').textContent = reais(r.total);
     let m = '';
-    if (X) m = `<div class="msg soft">Foto adicional: ${reais(ev.packExtra)} cada.</div>`;
+    if (X) m = `<div class="msg soft">Foto adicional: ${reais(ev.extraUnit)} cada.</div>`;
     else if (r.pack) m = `<div class="msg soft">Pacote de até ${ev.packLimit} fotos${r.extras ? ` + ${r.extras} foto${r.extras > 1 ? 's' : ''} adiciona${r.extras > 1 ? 'is' : 'l'} a ${reais(ev.packExtra)}` : ''}.</div>`;
     else if (r.kind === 'all') m = `<div class="msg">Você leva todas as fotos${A ? ' do atleta' : ''}, inclusive as que não escolheu.</div>`;
     else if (r.freeExtra > 0 && !r.upsell) m = `<div class="msg soft">Você ainda pode escolher mais ${r.freeExtra} foto${r.freeExtra > 1 ? 's' : ''} sem pagar a mais.</div>`;
