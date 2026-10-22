@@ -13,5 +13,9 @@ export async function onRequestGet({ request, env }) {
     ? await env.DB.prepare(`SELECT DISTINCT p.id FROM photos p JOIN photo_athletes pa ON pa.photo_id = p.id
         WHERE pa.athlete_id = ? AND ${ready} ORDER BY p.filename`).bind(a).all()
     : await env.DB.prepare(`SELECT p.id FROM photos p WHERE ${ready} ORDER BY p.filename`).all();
-  return json({ photos: results.map((r) => r.id) }, 200, { 'cache-control': 'public, max-age=30' });
+  let general = [];
+  if (a && !q.get('geral') && !q.get('queue')) { // fotos gerais confirmadas (pasta Geral / triagem) também aparecem na galeria do atleta
+    general = (await env.DB.prepare(`SELECT p.id FROM photos p WHERE ${ready} AND p.triaged = 1 AND NOT EXISTS (SELECT 1 FROM photo_athletes pa WHERE pa.photo_id = p.id) ORDER BY p.filename`).all()).results.map((r) => r.id);
+  }
+  return json({ photos: results.map((r) => r.id), general }, 200, { 'cache-control': 'public, max-age=30' });
 }

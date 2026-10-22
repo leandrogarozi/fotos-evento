@@ -11,10 +11,13 @@ export async function orderPhotos(env, order) {
   if (!PAID.includes(order.status)) return [];
   let q;
   if (order.kind === 'todas') {
-    const claims = Number((await getConfig(env)).claim_enabled) === 1; // marcações livres só contam se estiver ligado
+    const cfg = await getConfig(env);
+    const claims = Number(cfg.claim_enabled) === 1; // marcações livres só contam se estiver ligado
+    const gen = Number(cfg.pack_includes_general) === 1; // fotos gerais só entram no pacote se estiver ligado
     q = [`SELECT p.id, p.filename FROM photos p WHERE ${READY} AND (
           EXISTS (SELECT 1 FROM photo_athletes pa WHERE pa.photo_id = p.id AND pa.athlete_id = ?)
-          ${claims ? 'OR EXISTS (SELECT 1 FROM order_photos op WHERE op.photo_id = p.id AND op.order_id = ?)' : ''})
+          ${claims ? 'OR EXISTS (SELECT 1 FROM order_photos op WHERE op.photo_id = p.id AND op.order_id = ?)' : ''}
+          ${gen ? 'OR (p.triaged = 1 AND NOT EXISTS (SELECT 1 FROM photo_athletes pg WHERE pg.photo_id = p.id))' : ''})
         ORDER BY p.filename`, claims ? [order.athlete_id, order.id] : [order.athlete_id]];
   } else {
     q = [`SELECT p.id, p.filename FROM photos p JOIN order_photos op ON op.photo_id = p.id

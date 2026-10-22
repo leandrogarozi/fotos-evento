@@ -6,5 +6,5 @@ import { cartPrice } from '../_lib/pricing.js';
 export async function onRequestGet({ request, env }) {
   const q = new URL(request.url).searchParams;
   const cfg = await getConfig(env);
-  return json(cartPrice(Math.max(0, Math.floor(Number(q.get('n')) || 0)), cfg, Date.now(), { allowAll: !!Number(q.get('athlete')) }));
+  return json(cartPrice(Math.max(0, Math.floor(Number(q.get('n')) || 0)), cfg, Date.now(), { allowAll: !!Number(q.get('athlete')) && (!Number(q.get('g')) || Number(cfg.pack_includes_general) === 1) }));
 }

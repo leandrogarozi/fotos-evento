@@ -39,7 +39,13 @@ export async function onRequestPost({ request, env }) {
     if (photoIds.length > MAX_PHOTOS) return bad(`Escolha até ${MAX_PHOTOS} fotos por pedido (ou leve o pacote completo).`);
     const ok = await env.DB.prepare('SELECT COUNT(*) AS n FROM photos WHERE id IN (SELECT value FROM json_each(?)) AND has_orig = 1 AND has_prev = 1').bind(JSON.stringify(photoIds)).first();
     if (ok.n !== photoIds.length) return bad('Alguma foto não está mais disponível. Recarregue a página.');
-    const price = cartPrice(photoIds.length, cfg, now, { allowAll: !!athlete });
+    // O pacote completo só cobre as fotos do atleta (e as gerais, se a opção estiver ligada).
+    let covered = true;
+    if (athlete && Number(cfg.pack_includes_general) !== 1) {
+      const t = await env.DB.prepare('SELECT COUNT(*) AS n FROM photo_athletes WHERE athlete_id = ? AND photo_id IN (SELECT value FROM json_each(?))').bind(athlete.id, JSON.stringify(photoIds)).first();
+      covered = t.n === photoIds.length;
+    }
+    const price = cartPrice(photoIds.length, cfg, now, { allowAll: !!athlete && covered });
     if (price.kind === 'all') { kind = 'todas'; amount = price.total; photoIds = []; title = `Todas as fotos: ${athlete.name} (${cfg.event_name})`; }
     else { kind = 'fotos'; amount = price.total; title = `${photoIds.length} foto${photoIds.length > 1 ? 's' : ''} (${cfg.event_name})`; }
   }

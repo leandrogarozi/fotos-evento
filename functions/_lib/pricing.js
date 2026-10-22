@@ -22,6 +22,8 @@ export const DEFAULTS = {
   claim_max: 0, // 0 = sem limite
   // 1 = quem comprou o pacote pode marcar fotos suas na galeria geral (risco: marcar foto de outros). Padrão: desligado.
   claim_enabled: 0,
+  // 1 = o pacote completo também inclui as fotos gerais (torcida, ambiente). Padrão: só as fotos do atleta.
+  pack_includes_general: 0,
   // Encerramento das vendas: data fixa (sales_end) ou N dias depois de published_at (sales_days).
   sales_end: '',
   sales_days: 0,
@@ -43,7 +45,7 @@ export const DEFAULTS = {
 
 export const NUMERIC_KEYS = [
   'presale_price_cents', 'price_one_cents', 'price_four_cents',
-  'price_all_event_cents', 'price_all_late_cents', 'late_after_days', 'price_box_cents', 'claim_max', 'claim_enabled', 'sales_days',
+  'price_all_event_cents', 'price_all_late_cents', 'late_after_days', 'price_box_cents', 'claim_max', 'claim_enabled', 'pack_includes_general', 'sales_days',
 ];
 
 export function mergeConfig(rows) {

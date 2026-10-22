@@ -130,13 +130,13 @@ test('carrinho de 3 fotos: cobra 40, paga e baixa só as 3 escolhidas', async ()
 });
 
 test('carrinho de 6 fotos do atleta vira pacote "todas" (libera até as não escolhidas)', async () => {
-  const six = [...Object.values(ids), (await upload('a5.jpg', [1], 'ORIG-A5')), (await upload('a6.jpg', [1], 'ORIG-A6'))].slice(0, 6);
+  const six = [ids.a2, ids.a3, ids.a4, await upload('a5.jpg', [1], 'ORIG-A5'), await upload('a6.jpg', [1], 'ORIG-A6'), await upload('a7.jpg', [1], 'ORIG-A7')];
   const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 1, photoIds: six, name: 'Ana', pin: '1234', email: 'a@b.com', whatsapp: '27977776666' }), env })).json();
   assert.equal(lastPref.items[0].unit_price, 60);
   await pay(6000);
   const p = await orderOf(c.token);
   assert.equal(p.kind, 'todas');
-  assert.equal(p.photos.length, 6, 'todas as fotos do atleta 1');
+  assert.equal(p.photos.length, 7, 'todas as 7 fotos do atleta 1, inclusive a que não foi selecionada');
 });
 
 test('"Quero todas" e validações do checkout', async () => {

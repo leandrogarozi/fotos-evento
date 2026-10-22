@@ -48,6 +48,9 @@ test('ao confirmar o pagamento: 1 e-mail com senha e link; guarda zerada; reentr
   assert.equal(m.to, 'maria@exemplo.com'); assert.equal(m.secret, 's3');
   assert.match(m.subject, /Pagamento confirmado/);
   assert.ok(m.text.includes('4321') && m.text.includes('https://fotos.test/') && m.text.includes('Já comprei'));
+  assert.match(m.text, /https:\/\/fotos\.test\/pedido\.html\?t=\w{20,}/, 'link direto do pedido no e-mail');
+  assert.ok(m.text.indexOf('pedido.html?t=') < m.text.indexOf('Senha: 4321'), 'o link vem ANTES da senha');
+  assert.ok(m.html.indexOf('Ver minhas fotos') < m.html.indexOf('4321'), 'botão no topo, antes da senha');
   assert.ok(m.html.includes('4321') && m.html.includes('href="https://fotos.test/"'));
   assert.ok(!/—/.test(m.text), 'sem travessão');
   assert.equal((await row()).pin_enc, '');

@@ -9,8 +9,8 @@ export async function onRequestPost({ request, env }) {
   if (!ids.length && !b.geral) return bad('Escolha pelo menos um atleta (ou marque foto geral).');
   const id = uid();
   await env.DB.batch([
-    env.DB.prepare('INSERT INTO photos (id, filename, created_at) VALUES (?, ?, ?)')
-      .bind(id, String(b.filename || '').slice(0, 200), new Date().toISOString()),
+    env.DB.prepare('INSERT INTO photos (id, filename, created_at, triaged) VALUES (?, ?, ?, ?)')
+      .bind(id, String(b.filename || '').slice(0, 200), new Date().toISOString(), b.triaged ? 1 : 0),
     ...ids.map((a) => env.DB.prepare('INSERT INTO photo_athletes (photo_id, athlete_id) VALUES (?, ?)').bind(id, a)),
   ]);
   return json({ id });
