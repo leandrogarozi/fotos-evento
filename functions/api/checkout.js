@@ -5,7 +5,7 @@ import { getConfig } from '../_lib/db.js';
 import { isPresale, allPrice, cartPrice, reais } from '../_lib/pricing.js';
 import { createPreference } from '../_lib/mp.js';
 
-const MAX_PHOTOS = 90; // limite de parâmetros por consulta do D1
+const MAX_PHOTOS = 300;
 
 // { athleteId?, all?, photoIds?, name, whatsapp, email? } -> { token, url }
 export async function onRequestPost({ request, env }) {
@@ -36,10 +36,8 @@ export async function onRequestPost({ request, env }) {
     photoIds = [...new Set((b.photoIds || []).map(String))];
     if (!photoIds.length) return bad('Escolha pelo menos uma foto.');
     if (photoIds.length > MAX_PHOTOS) return bad(`Escolha até ${MAX_PHOTOS} fotos por pedido (ou leve o pacote completo).`);
-    const ph = photoIds.map(() => '?').join(',');
-    const { results } = await env.DB.prepare(
-      `SELECT id FROM photos WHERE id IN (${ph}) AND has_orig = 1 AND has_prev = 1`).bind(...photoIds).all();
-    if (results.length !== photoIds.length) return bad('Alguma foto não está mais disponível. Recarregue a página.');
+    const ok = await env.DB.prepare('SELECT COUNT(*) AS n FROM photos WHERE id IN (SELECT value FROM json_each(?)) AND has_orig = 1 AND has_prev = 1').bind(JSON.stringify(photoIds)).first();
+    if (ok.n !== photoIds.length) return bad('Alguma foto não está mais disponível. Recarregue a página.');
     const price = cartPrice(photoIds.length, cfg, now, { allowAll: !!athlete });
     if (price.kind === 'all') { kind = 'todas'; amount = price.total; photoIds = []; title = `Todas as fotos: ${athlete.name} (${cfg.event_name})`; }
     else { kind = 'fotos'; amount = price.total; title = `${photoIds.length} foto${photoIds.length > 1 ? 's' : ''} (${cfg.event_name})`; }
@@ -52,7 +50,7 @@ export async function onRequestPost({ request, env }) {
     `INSERT INTO orders (id, token, athlete_id, buyer_name, whatsapp, email, kind, amount_cents, status, created_at, presale, pin_salt, pin_hash, pin_enc)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'aguardando', ?, 0, ?, ?, ?)`
   ).bind(order.id, order.token, athlete ? athlete.id : null, name, whatsapp, email, kind, amount, order.created_at, pin.salt, pin.hash, await encryptPin(env, b.pin))];
-  for (const pid of photoIds) stmts.push(env.DB.prepare('INSERT INTO order_photos (order_id, photo_id) VALUES (?, ?)').bind(order.id, pid));
+  if (photoIds.length) stmts.push(env.DB.prepare('INSERT INTO order_photos (order_id, photo_id) SELECT ?, value FROM json_each(?)').bind(order.id, JSON.stringify(photoIds)));
   await env.DB.batch(stmts);
 
   try {

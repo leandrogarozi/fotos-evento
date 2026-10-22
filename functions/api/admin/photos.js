@@ -1,4 +1,4 @@
-import { json } from '../../_lib/util.js';
+import { json, bad, readJson } from '../../_lib/util.js';
 import { isAdmin, denied } from '../../_lib/auth.js';
 
 export async function onRequestGet({ request, env }) {
@@ -16,4 +16,20 @@ export async function onRequestGet({ request, env }) {
     athletes: results.sort((a, b) => a.turma_order - b.turma_order || a.name.localeCompare(b.name, 'pt-BR'))
       .map(({ id, name, turma, n }) => ({ id, name, turma, n })),
   });
+}
+
+// { action: 'delete', ids: [...] } apaga várias fotos (R2 + banco) de uma vez.
+export async function onRequestPost({ request, env }) {
+  if (!(await isAdmin(request, env))) return denied();
+  const b = await readJson(request);
+  const ids = [...new Set((b.ids || []).map(String))].filter((id) => /^[0-9a-f-]{36}$/.test(id)).slice(0, 500);
+  if (b.action !== 'delete' || !ids.length) return bad('Nada para excluir.');
+  const js = JSON.stringify(ids);
+  await env.FOTOS.delete(ids.flatMap((id) => [`orig/${id}`, `prev/${id}`]));
+  await env.DB.batch([
+    env.DB.prepare('DELETE FROM order_photos WHERE photo_id IN (SELECT value FROM json_each(?))').bind(js),
+    env.DB.prepare('DELETE FROM photo_athletes WHERE photo_id IN (SELECT value FROM json_each(?))').bind(js),
+    env.DB.prepare('DELETE FROM photos WHERE id IN (SELECT value FROM json_each(?))').bind(js),
+  ]);
+  return json({ deleted: ids.length });
 }

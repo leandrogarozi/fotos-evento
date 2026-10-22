@@ -24,6 +24,6 @@ export function makeR2() {
     store,
     put: async (k, body, opts) => { store.set(k, { buf: new Uint8Array(await new Response(body).arrayBuffer()), opts }); },
     get: async (k) => (store.has(k) ? { body: new Response(store.get(k).buf).body, httpMetadata: store.get(k).opts && store.get(k).opts.httpMetadata } : null),
-    delete: async (k) => { store.delete(k); },
+    delete: async (k) => { for (const key of [].concat(k)) store.delete(key); },
   };
 }

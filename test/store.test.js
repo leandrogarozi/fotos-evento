@@ -198,3 +198,19 @@ test('pedido de fotos avulsas não usa a marcação', async () => {
   assert.equal((await claim.onRequestPost({ request: post('/api/claim', { token: c.token, photoIds: [a] }), env })).status, 403);
   assert.equal((await orderOf(c.token)).photos.length, 1);
 });
+
+test('sem limite por padrão: marca muitas fotos de uma vez; exclusão em massa remove tudo', async () => {
+  const many = []; for (let i = 0; i < 60; i++) many.push(await upload(`m${i}.jpg`, [], 'ORIG-M' + i));
+  const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 4, all: true, name: 'Beto', pin: '1234', email: 'b@b.com', whatsapp: '27933332222' }), env })).json();
+  await pay(6000);
+  const r = await claim.onRequestPost({ request: post('/api/claim', { token: c.token, photoIds: many }), env });
+  assert.equal(r.status, 200);
+  assert.equal((await orderOf(c.token)).photos.length, 60);
+  const ev = await (await event.onRequestGet({ env })).json(); assert.equal(ev.claimMax, 0);
+  // exclusão em massa
+  const del = await aPhotos.onRequestPost({ request: post('/a', { action: 'delete', ids: many }, H), env });
+  assert.equal((await del.json()).deleted, 60);
+  assert.equal((await orderOf(c.token)).photos.length, 0);
+  assert.equal(many.some((id) => env.FOTOS.store.has(`orig/${id}`) || env.FOTOS.store.has(`prev/${id}`)), false);
+  assert.equal((await aPhotos.onRequestPost({ request: post('/a', { action: 'delete', ids: many }), env })).status, 401, 'só o admin apaga');
+});

@@ -59,14 +59,14 @@ async function load(sync) {
     $('c').innerHTML = `<div class="eyebrow">Seu pedido</div><h1>Suas fotos <em>estão prontas</em></h1>
       <p class="lead">${who} · ${what.toLowerCase()}</p>
       <div class="row" style="margin-top:22px"><button class="go" id="zip">Baixar todas (ZIP)</button><span class="muted" style="font-size:13px">${o.photos.length} foto${o.photos.length > 1 ? 's' : ''} em alta qualidade, sem marca d'água</span></div>
-      <div class="dgrid">${o.photos.map((p) => `<div class="dl"><img src="${p.thumb}" loading="lazy" alt=""><div class="b"><a class="btn light small" href="${p.url}" download>Baixar</a></div></div>`).join('')}</div>${o.kind === 'todas' && o.galleryCount > 0 ? `<div class="box sage" style="margin-top:22px">Faltou alguma foto sua? <a href="galeria.html?claim=${encodeURIComponent(t)}" style="font-weight:700;color:var(--ink)">Escolher mais fotos</a> (até ${o.claimMax}).</div>` : ''}${back}`;
+      <div class="dgrid">${o.photos.map((p) => `<div class="dl"><img src="${p.thumb}" loading="lazy" alt=""><div class="b"><a class="btn light small" href="${p.url}" download>Baixar</a></div></div>`).join('')}</div>${o.kind === 'todas' && o.galleryCount > 0 ? `<div class="box sage" style="margin-top:22px">Faltou alguma foto sua? <a href="galeria.html?claim=${encodeURIComponent(t)}" style="font-weight:700;color:var(--ink)">Escolher mais fotos</a> </div>` : ''}${back}`;
     $('zip').onclick = async function () { this.disabled = true; try { await downloadZip(o.photos, this); } catch (e) { alert('Não consegui montar o ZIP. Baixe as fotos uma a uma.'); } this.textContent = 'Baixar todas (ZIP)'; this.disabled = false; };
   } else if (o.kind === 'todas' && o.galleryCount > 0) {
     $('c').innerHTML = `<div class="card" style="margin-top:28px"><div class="ok-mark">✓</div>
       <h1 style="font-size:clamp(30px,8vw,44px)">Pagamento <em>confirmado</em></h1>
       <p class="lead" style="margin-top:10px">${who} · ${what.toLowerCase()} · ${reais(o.amount)}</p>
       <h2 style="margin-top:26px">As fotos já estão no ar</h2>
-      <p class="muted" style="font-size:15px">Abra a galeria e toque no coração das fotos em que <b>você aparece</b> (até ${o.claimMax}). Depois toque em <b>Salvar minhas fotos</b> e baixe.</p>
+      <p class="muted" style="font-size:15px">Abra a galeria e toque no coração das fotos em que <b>você aparece</b>. Depois toque em <b>Salvar minhas fotos</b> e baixe.</p>
       <a class="btn go full" style="width:100%" href="galeria.html?claim=${encodeURIComponent(t)}">Escolher minhas fotos</a></div>${back}`;
   } else {
     $('c').innerHTML = `<div class="card" style="margin-top:28px"><div class="ok-mark">✓</div>

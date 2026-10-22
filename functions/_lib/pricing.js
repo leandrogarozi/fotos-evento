@@ -16,8 +16,8 @@ export const DEFAULTS = {
   published_at: '',
   late_after_days: 5,
   price_box_cents: 0,
-  // Máx. de fotos que quem comprou o pacote completo pode marcar como suas na galeria geral.
-  claim_max: 40,
+  // Máx. de fotos que quem comprou o pacote completo pode marcar na galeria geral (0 = sem limite).
+  claim_max: 0, // 0 = sem limite
 };
 
 export const NUMERIC_KEYS = [

@@ -69,7 +69,7 @@ const Q = new URLSearchParams(location.search);
 const A = Number(Q.get('a')) || 0;
 const CLAIM = Q.get('claim') || '';
 const KEY = 'sel:' + A;
-let claimMax = 40;
+let claimMax = 0; // 0 = sem limite
 let ev, ids = [], sel = new Set(), quote = null, idx = 0, mode = 'cart', qt;
 
 const save = () => { if (CLAIM) return; try { localStorage.setItem(KEY, JSON.stringify([...sel])); } catch (_) {} };
@@ -82,7 +82,7 @@ function header() {
   $('root').innerHTML = `
     <div class="eyebrow">${esc(ev.eventName)}</div>
     <h1>${CLAIM ? 'Encontre <em>suas fotos</em>' : ath ? `Fotos de <em>${esc(first)}</em>` : 'Todas as <em>fotos</em>'}</h1>
-    <p class="lead">${CLAIM ? `Toque no coração das fotos em que <b>você aparece</b>. Você pode marcar até <b>${claimMax}</b>. Depois toque em <b>Salvar minhas fotos</b>. ` : ''}${CLAIM ? '' : ath ? `Você aparece em <b>${ids.length}</b> foto${ids.length === 1 ? '' : 's'}. ` : ''}${CLAIM ? '' : 'Toque na foto para ampliar e no coração para escolher.'}</p>
+    <p class="lead">${CLAIM ? `Toque no coração das fotos em que <b>você aparece</b>. Marque quantas quiser. Depois toque em <b>Salvar minhas fotos</b>. ` : ''}${CLAIM ? '' : ath ? `Você aparece em <b>${ids.length}</b> foto${ids.length === 1 ? '' : 's'}. ` : ''}${CLAIM ? '' : 'Toque na foto para ampliar e no coração para escolher.'}</p>
     ${!CLAIM && ath && dl.until ? `<div class="box sage" style="max-width:560px">Pacote completo por ${reais(ev.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}.</div>` : ''}
     <div class="grid" id="grid"></div>`;
   $('grid').innerHTML = ids.map((id) => `<div class="ph" data-id="${id}"><img src="/img/${id}" loading="lazy" alt="" draggable="false"><button class="heart" aria-label="Escolher foto">♡</button></div>`).join('');
@@ -103,10 +103,10 @@ function toggle(id) { sel.has(id) ? sel.delete(id) : sel.add(id); save(); paint(
 function requote() {
   clearTimeout(qt); qt = setTimeout(async () => {
     if (CLAIM) {
-      const n = sel.size; $('bar').style.display = ids.length ? '' : 'none';
-      $('cnt').textContent = `${n} de ${claimMax} marcadas`; $('total').textContent = '';
-      $('fin').textContent = 'Salvar minhas fotos'; $('fin').disabled = n > claimMax;
-      $('msg').innerHTML = n > claimMax ? `<div class="msg">Você passou do limite de ${claimMax} fotos. Desmarque algumas.</div>` : '';
+      const n = sel.size, over = claimMax > 0 && n > claimMax; $('bar').style.display = ids.length ? '' : 'none';
+      $('cnt').textContent = claimMax > 0 ? `${n} de ${claimMax} marcadas` : `${n} marcada${n === 1 ? '' : 's'}`; $('total').textContent = '';
+      $('fin').textContent = 'Salvar minhas fotos'; $('fin').disabled = over;
+      $('msg').innerHTML = over ? `<div class="msg">Você passou do limite de ${claimMax} fotos. Desmarque algumas.</div>` : '';
       return;
     }
     const n = sel.size;
@@ -146,7 +146,7 @@ document.addEventListener('dragstart', (e) => { if (e.target.tagName === 'IMG') 
 function openSheet(m) {
   mode = m;
   if (m === 'all') { $('sh-title').textContent = 'Pacote completo'; $('sh-sub').textContent = `Todas as fotos do atleta por ${reais(ev.allPrice)}.`; }
-  else if (!A && sel.size > 90) { alert('Escolha até 90 fotos por pedido.'); return; }
+  else if (sel.size > 300) { alert('Escolha até 300 fotos por pedido.'); return; }
   else { $('sh-title').textContent = 'Quase lá'; $('sh-sub').textContent = quote ? (quote.kind === 'all' ? `Pacote completo: ${reais(quote.total)}.` : `${sel.size} foto${sel.size > 1 ? 's' : ''}: ${reais(quote.total)}.`) : ''; }
   $('err').textContent = ''; $('sheet').classList.add('open');
 }
@@ -174,13 +174,13 @@ $('f').addEventListener('submit', async (x) => {
 });
 
 Promise.all([fetch('/api/event').then((r) => r.json()), fetch('/api/photos' + (A && !CLAIM ? '?athlete=' + A : '')).then((r) => r.json()), A && !CLAIM ? fetch('/api/photos').then((r) => r.json()) : Promise.resolve(null), CLAIM ? fetch('/api/pedido/' + encodeURIComponent(CLAIM)).then((r) => r.json()) : Promise.resolve(null)]).then(([e, p, all, ped]) => {
-  ev = e; ids = p.photos; claimMax = e.claimMax || 40; sel = new Set(CLAIM ? ((ped && ped.claimed) || []).filter((id) => ids.includes(id)) : load().filter((id) => ids.includes(id)));
+  ev = e; ids = p.photos; claimMax = e.claimMax || 0; sel = new Set(CLAIM ? ((ped && ped.claimed) || []).filter((id) => ids.includes(id)) : load().filter((id) => ids.includes(id)));
   document.title = 'Fotos: ' + e.eventName;
   if (!ids.length && A && all && all.photos.length) {
     const ath = e.athletes.find((a) => a.id === A); const first = ath ? ath.name.split(' ')[0] : '';
     $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Fotos de <em>${esc(first)}</em></h1>
       <p class="lead">Ainda não separamos as fotos por atleta. Você tem duas opções:</p>
-      <div class="card"><h2>Pacote completo: ${reais(e.allPrice)}</h2><p class="muted" style="font-size:14px">Você paga e marca no site as fotos em que aparece (até ${claimMax}), sem marca d'água.</p><button class="go full" id="buyall">Quero o pacote completo</button></div>
+      <div class="card"><h2>Pacote completo: ${reais(e.allPrice)}</h2><p class="muted" style="font-size:14px">Você paga e marca no site as fotos em que aparece, sem marca d'água.</p><button class="go full" id="buyall">Quero o pacote completo</button></div>
       <div class="card" style="background:var(--card2);border:0"><h2>Fotos avulsas</h2><p class="muted" style="font-size:14px">1 foto ${reais(e.prices.one)} · 4 fotos ${reais(e.prices.four)}. Veja todas as fotos e escolha as suas.</p><a class="btn light full" style="width:100%" href="galeria.html">Ver todas as fotos</a></div>`;
     $('buyall').onclick = () => openSheet('all');
     return;
