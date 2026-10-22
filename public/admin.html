@@ -204,7 +204,7 @@ async function makePreview(file) {
     const lw = w * 0.26, lh = lw * logo.height / logo.width; g.globalAlpha = 0.4;
     for (let y = -diag, r = 0; y < diag; y += lh * 3.2, r++) for (let x = -diag + (r % 2) * lw * 0.9; x < diag; x += lw * 1.8) g.drawImage(logo, x, y, lw, lh);
   } else {
-    const fs = Math.max(18, Math.round(w * 0.05)); g.font = `700 ${fs}px Figtree, Arial, sans-serif`;
+    const fs = Math.max(18, Math.round(w * 0.05)); g.font = `700 ${fs}px Inter, Arial, sans-serif`;
     g.fillStyle = 'rgba(255,255,255,0.45)'; g.shadowColor = 'rgba(0,0,0,0.4)'; g.shadowBlur = 5; g.textBaseline = 'middle';
     const tw = g.measureText(brandText).width;
     for (let y = -diag, r = 0; y < diag; y += fs * 4, r++) for (let x = -diag + (r % 2) * tw * 0.6; x < diag; x += tw * 1.5) g.fillText(brandText, x, y);
