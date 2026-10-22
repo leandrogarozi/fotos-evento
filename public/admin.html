@@ -81,11 +81,25 @@ async function la() {
 }
 async function tg(id, active) { await api('athletes', { action: 'toggle', id, active }); la(); }
 function ll() {
-  const url = location.origin + '/';
-  $('link').innerHTML = `<h2>Link e QR</h2><input readonly value="${url}" onclick="this.select()"><div class="row" style="margin-top:12px"><button class="small" onclick="navigator.clipboard.writeText('${url}').then(()=>this.textContent='Copiado!')">Copiar link</button></div>
-    <img alt="QR code" style="margin-top:16px;width:220px;height:220px" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(url)}">`;
+  const items = [
+    ['Página de venda', 'Link principal: é o que você divulga (pré-venda e loja).', location.origin + '/'],
+    ['Já comprei (acesso às fotos)', 'Para quem já comprou entrar com WhatsApp e senha e ver as fotos.', location.origin + '/acesso.html'],
+    ['Galeria geral', 'Todas as fotos com marca d\'água, para escolher e comprar.', location.origin + '/galeria.html'],
+  ];
+  $('link').innerHTML = '<h2>Links e QR codes</h2>' + items.map((it, i) => `
+    <div style="border-top:${i ? '1px solid var(--line)' : '0'};padding:18px 0;display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+      <img alt="QR code" width="130" height="130" style="border-radius:12px;background:#fff" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=${encodeURIComponent(it[2])}">
+      <div style="flex:1;min-width:220px">
+        <div style="font-weight:700">${it[0]}</div>
+        <div class="muted" style="font-size:13px;margin:2px 0 10px">${it[1]}</div>
+        <input readonly value="${it[2]}" onclick="this.select()">
+        <div class="row" style="margin-top:10px">
+          <button class="small" onclick="navigator.clipboard.writeText('${it[2]}').then(()=>{this.textContent='Copiado!'})">Copiar link</button>
+          <a class="btn small light" target="_blank" href="${it[2]}">Abrir</a>
+        </div>
+      </div>
+    </div>`).join('');
 }
-
 // ---------- Fotos: upload com marca d'água gerada aqui no navegador ----------
 const norm = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 let athletesCache = [], brandText = 'Leandro Garozi Fotografia';
