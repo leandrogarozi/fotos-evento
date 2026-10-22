@@ -5,8 +5,12 @@ const ORDER = { RX: 1, INT: 2, SC: 3 };
 
 export async function onRequestGet({ request, env }) {
   if (!(await isAdmin(request, env))) return denied();
-  const { results } = await env.DB.prepare('SELECT id, name, turma, active FROM athletes ORDER BY turma_order, name COLLATE NOCASE').all();
-  return json({ athletes: results });
+  const { results } = await env.DB.prepare('SELECT id, name, turma, turma_order, active FROM athletes').all();
+  return json({
+    athletes: results
+      .sort((a, b) => a.turma_order - b.turma_order || a.name.localeCompare(b.name, 'pt-BR'))
+      .map(({ id, name, turma, active }) => ({ id, name, turma, active })),
+  });
 }
 
 // { action: 'add', name, turma } | { action: 'toggle', id, active }

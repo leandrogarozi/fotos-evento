@@ -56,6 +56,8 @@ test('lista de atletas: 38, agrupados por turma, sem a Luana duplicada', async (
   assert.equal(d.athletes.length, 38);
   assert.equal(d.athletes.filter((a) => a.name === 'Luana Souza').length, 1);
   assert.equal(d.athletes[0].turma, 'RX');
+  const sc = d.athletes.filter((a) => a.turma === 'SC').map((a) => a.name);
+  assert.equal(sc[2], 'Érica Freitas');
 });
 
 let tokenPedido, orderId;
