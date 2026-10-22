@@ -2,7 +2,7 @@ import { json, bad, readJson, uid, token } from '../_lib/util.js';
 import { normWpp, validPin, newPin } from '../_lib/pin.js';
 import { encryptPin } from '../_lib/secret.js';
 import { getConfig } from '../_lib/db.js';
-import { isPresale, allPrice } from '../_lib/pricing.js';
+import { isPresale, allPrice, salesOpen } from '../_lib/pricing.js';
 import { createPreference } from '../_lib/mp.js';
 
 export async function onRequestPost({ request, env }) {
@@ -20,6 +20,7 @@ export async function onRequestPost({ request, env }) {
   if (!athlete) return bad('Escolha o atleta na lista.');
 
   const cfg = await getConfig(env);
+  if (!salesOpen(cfg)) return bad('As vendas foram encerradas.', 410);
   if (!isPresale(cfg)) return bad('A pré-venda terminou.', 410);
 
   const pin = await newPin(b.pin, whatsapp);

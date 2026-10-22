@@ -74,6 +74,8 @@ const FIELDS = [
   ['Datas (horário de Brasília)'],
   ['presale_end', 'Fim da pré-venda', 'datetime'], ['published_at', 'Fotos publicadas em (a partir daqui conta o prazo do preço)', 'datetime', true],
   ['late_after_days', 'Dias com o preço "depois da pré-venda"', 'number'],
+  ['sales_end', 'Encerramento das vendas (data e hora)', 'datetime', true],
+  ['sales_days', 'Ou: dias de venda depois de "fotos publicadas" (0 = não usar)', 'number'],
   ['Marcação de fotos'],
   ['claim_max', 'Limite de fotos que quem comprou o pacote pode marcar (0 = sem limite)', 'number'],
 ];
@@ -92,7 +94,9 @@ async function lc() {
     if (type === 'number') return `<input type="number" min="0" data-k="${k}" data-t="number" value="${esc(v)}">`;
     return `<input data-k="${k}" data-t="text" value="${esc(v)}">`;
   };
-  $('config').innerHTML = '<h2>Preços e datas</h2><div class="grid">' + FIELDS.map(f => f.length === 1
+  const close = c.sales_end && Date.parse(c.sales_end) ? Date.parse(c.sales_end) : (c.published_at && Number(c.sales_days) > 0 && Date.parse(c.published_at) ? Date.parse(c.published_at) + Number(c.sales_days) * 864e5 : null);
+  const eff = close ? 'Vendas encerram em <b>' + new Date(close).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }) + '</b>' + (close < Date.now() ? ' (já encerradas)' : '') : 'Sem encerramento definido: as vendas ficam abertas.';
+  $('config').innerHTML = '<h2>Preços e datas</h2><div class="box sage" style="margin:0 0 6px">' + eff + '</div><div class="grid">' + FIELDS.map(f => f.length === 1
     ? `<h3 style="grid-column:1/-1;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:14px 0 0;font-weight:500">${f[0]}</h3>`
     : `<div><label>${f[1]}</label>${input(f)}</div>`).join('') + '</div><button class="full" id="sv">Salvar</button><div class="err" id="cerr"></div>';
   $('sv').onclick = async () => {

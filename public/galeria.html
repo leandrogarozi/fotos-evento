@@ -83,6 +83,7 @@ function header() {
     <div class="eyebrow">${esc(ev.eventName)}</div>
     <h1>${CLAIM ? 'Encontre <em>suas fotos</em>' : ath ? `Fotos de <em>${esc(first)}</em>` : 'Todas as <em>fotos</em>'}</h1>
     <p class="lead">${CLAIM ? `Toque no coração das fotos em que <b>você aparece</b>. Marque quantas quiser. Depois toque em <b>Salvar minhas fotos</b>. ` : ''}${CLAIM ? '' : ath ? `Você aparece em <b>${ids.length}</b> foto${ids.length === 1 ? '' : 's'}. ` : ''}${CLAIM ? '' : 'Toque na foto para ampliar e no coração para escolher.'}</p>
+    ${!CLAIM && ev.salesEnd ? `<div class="box sage" style="max-width:560px;font-size:15px"><b>Vendas encerram em ${fmt(ev.salesEnd)}</b>. Depois disso não será possível comprar.</div>` : ''}
     ${!CLAIM && ath && dl.until ? `<div class="box sage" style="max-width:560px">Pacote completo por ${reais(ev.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}.</div>` : ''}
     <div class="grid" id="grid"></div>`;
   $('grid').innerHTML = ids.map((id) => `<div class="ph" data-id="${id}"><img src="/img/${id}" loading="lazy" alt="" draggable="false"><button class="heart" aria-label="Escolher foto">♡</button></div>`).join('');
@@ -176,6 +177,7 @@ $('f').addEventListener('submit', async (x) => {
 Promise.all([fetch('/api/event').then((r) => r.json()), fetch('/api/photos' + (A && !CLAIM ? '?athlete=' + A : '')).then((r) => r.json()), A && !CLAIM ? fetch('/api/photos').then((r) => r.json()) : Promise.resolve(null), CLAIM ? fetch('/api/pedido/' + encodeURIComponent(CLAIM)).then((r) => r.json()) : Promise.resolve(null)]).then(([e, p, all, ped]) => {
   ev = e; ids = p.photos; claimMax = e.claimMax || 0; sel = new Set(CLAIM ? ((ped && ped.claimed) || []).filter((id) => ids.includes(id)) : load().filter((id) => ids.includes(id)));
   document.title = 'Fotos: ' + e.eventName;
+  if (e.salesClosed && !CLAIM) { $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Vendas <em>encerradas</em></h1><p class="lead">O prazo para comprar fotos terminou. Se você já comprou, acesse as suas fotos pelo botão abaixo.</p><a class="btn go full" style="width:100%" href="acesso.html">Já comprei, acessar minhas fotos</a>`; return; }
   if (!ids.length && A && all && all.photos.length) {
     const ath = e.athletes.find((a) => a.id === A); const first = ath ? ath.name.split(' ')[0] : '';
     $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Fotos de <em>${esc(first)}</em></h1>

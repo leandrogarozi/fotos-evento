@@ -2,7 +2,7 @@ import { json, bad, readJson, uid, token } from '../_lib/util.js';
 import { normWpp, validPin, newPin } from '../_lib/pin.js';
 import { encryptPin } from '../_lib/secret.js';
 import { getConfig } from '../_lib/db.js';
-import { isPresale, allPrice, cartPrice, reais } from '../_lib/pricing.js';
+import { isPresale, allPrice, cartPrice, reais, salesOpen } from '../_lib/pricing.js';
 import { createPreference } from '../_lib/mp.js';
 
 const MAX_PHOTOS = 300;
@@ -20,6 +20,7 @@ export async function onRequestPost({ request, env }) {
   if (!validPin(b.pin)) return bad('Crie uma senha de 4 a 6 números.');
 
   const cfg = await getConfig(env);
+  if (!salesOpen(cfg)) return bad('As vendas foram encerradas.', 410);
   const now = Date.now();
   let athlete = null;
   if (b.athleteId) {

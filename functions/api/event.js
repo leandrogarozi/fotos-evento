@@ -1,6 +1,6 @@
 import { json } from '../_lib/util.js';
 import { getConfig } from '../_lib/db.js';
-import { isPresale, allPrice, allPriceDeadline } from '../_lib/pricing.js';
+import { isPresale, allPrice, allPriceDeadline, salesCloseAt, salesOpen } from '../_lib/pricing.js';
 
 export async function onRequestGet({ env }) {
   const cfg = await getConfig(env);
@@ -17,6 +17,8 @@ export async function onRequestGet({ env }) {
     claimMax: Math.max(0, Number(cfg.claim_max) || 0),
     prices: { one: cfg.price_one_cents, four: cfg.price_four_cents },
     presale: isPresale(cfg, now),
+    salesEnd: salesCloseAt(cfg) ? new Date(salesCloseAt(cfg)).toISOString() : null,
+    salesClosed: !salesOpen(cfg, now),
     presaleEnd: cfg.presale_end,
     allPrice: allPrice(cfg, now),
     deadline: allPriceDeadline(cfg, now),

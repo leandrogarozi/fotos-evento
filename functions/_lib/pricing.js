@@ -18,11 +18,14 @@ export const DEFAULTS = {
   price_box_cents: 0,
   // Máx. de fotos que quem comprou o pacote completo pode marcar na galeria geral (0 = sem limite).
   claim_max: 0, // 0 = sem limite
+  // Encerramento das vendas: data fixa (sales_end) ou N dias depois de published_at (sales_days).
+  sales_end: '',
+  sales_days: 0,
 };
 
 export const NUMERIC_KEYS = [
   'presale_price_cents', 'price_one_cents', 'price_four_cents',
-  'price_all_event_cents', 'price_all_late_cents', 'late_after_days', 'price_box_cents', 'claim_max',
+  'price_all_event_cents', 'price_all_late_cents', 'late_after_days', 'price_box_cents', 'claim_max', 'sales_days',
 ];
 
 export function mergeConfig(rows) {
@@ -32,6 +35,14 @@ export function mergeConfig(rows) {
   }
   return cfg;
 }
+
+// Momento (ms) em que as vendas encerram, ou null se não há encerramento definido.
+export function salesCloseAt(cfg) {
+  if (cfg.sales_end) { const t = Date.parse(cfg.sales_end); if (t) return t; }
+  if (cfg.published_at && Number(cfg.sales_days) > 0) { const t = Date.parse(cfg.published_at); if (t) return t + Number(cfg.sales_days) * 86400000; }
+  return null;
+}
+export const salesOpen = (cfg, now = Date.now()) => { const c = salesCloseAt(cfg); return c == null || now <= c; };
 
 export function isPresale(cfg, now = Date.now()) {
   return now <= Date.parse(cfg.presale_end);

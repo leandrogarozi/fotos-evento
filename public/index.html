@@ -19,6 +19,19 @@ function tick() {
   const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
   el.textContent = `Termina em ${d ? d + 'd ' : ''}${h}h ${m}min`;
 }
+function tickSales() {
+  const el = $('sc'); if (!el || !ev || !ev.salesEnd) return;
+  const ms = Date.parse(ev.salesEnd) - Date.now();
+  if (ms <= 0) { location.reload(); return; }
+  const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
+  el.textContent = `faltam ${d ? d + (d > 1 ? ' dias ' : ' dia ') : ''}${h}h ${m}min`;
+}
+const salesBox = (e) => e.salesEnd ? `<div class="box sage" style="margin-top:22px;font-size:16px"><b>Vendas encerram em ${fmt(e.salesEnd)}</b><br><span id="sc" style="font-size:14px"></span><br><span style="font-size:13px">Depois dessa data não será possível comprar.</span></div>` : '';
+function closedView(e) {
+  $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Vendas <em>encerradas</em></h1>
+    <p class="lead">O prazo para comprar fotos terminou. Se você já comprou, acesse as suas fotos pelo botão abaixo.</p>
+    <a class="btn go full" style="width:100%" href="acesso.html">Já comprei, acessar minhas fotos</a>`;
+}
 const options = (e) => {
   const g = {}; e.athletes.forEach((a) => (g[a.turma || 'Outros'] = g[a.turma || 'Outros'] || []).push(a));
   return Object.keys(g).map((t) => `<optgroup label="Turma ${esc(t)}">${g[t].map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</optgroup>`).join('');
@@ -29,6 +42,7 @@ function presaleView(e) {
     <div class="eyebrow">${esc(e.eventName)}</div>
     <h1>Garanta <em>suas fotos</em></h1>
     <p class="lead">Pré-venda: todas as suas fotos do campeonato, em alta qualidade e sem marca d'água, por um preço especial. Quando eu publicar, o download libera sozinho nesta mesma página.</p>
+    ${salesBox(e)}
     <div class="card">
       <div class="muted" style="font-size:14px">Pacote completo, todas as fotos do atleta</div>
       <div class="price">${reais(e.allPrice)}</div>
@@ -74,6 +88,7 @@ function storeView(e) {
     <div class="eyebrow">${esc(e.eventName)}</div>
     <h1>Encontre <em>suas fotos</em></h1>
     <p class="lead">Escolha seu nome, veja as fotos do campeonato e leve as suas em alta qualidade, sem marca d'água.</p>
+    ${salesBox(e)}
     <div class="card">
       <label>Seu nome na lista</label>
       <select id="athlete"><option value="">Escolha o atleta</option>${options(e)}</select>
@@ -96,7 +111,7 @@ function storeView(e) {
 }
 fetch('/api/event').then((r) => r.json()).then((e) => {
   ev = e; document.title = 'Fotos: ' + e.eventName;
-  e.presale ? presaleView(e) : storeView(e);
-  setInterval(tick, 30000);
+  e.salesClosed ? closedView(e) : e.presale ? presaleView(e) : storeView(e);
+  tickSales(); setInterval(() => { tick(); tickSales(); }, 30000);
 }).catch(() => { $('root').innerHTML = '<p class="err" style="margin-top:40px">Não consegui carregar. Recarregue a página.</p>'; });
 </script></body></html>
