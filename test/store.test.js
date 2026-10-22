@@ -52,7 +52,7 @@ const upload = async (filename, athleteIds, origTxt) => {
 const orderOf = async (tokenOrder) => (await pedido.onRequestGet({ params: { token: tokenOrder }, request: req('/x'), env })).json();
 
 test('pré-venda de atleta ainda sem fotos; depois do upload libera sozinha', async () => {
-  const pre = await (await presale.onRequestPost({ request: post('/api/presale', { athleteId: 1, name: 'Maria', whatsapp: '27999991234' }), env })).json();
+  const pre = await (await presale.onRequestPost({ request: post('/api/presale', { athleteId: 1, name: 'Maria', pin: '1234', whatsapp: '27999991234' }), env })).json();
   await pay(5000);
   let p = await orderOf(pre.token);
   assert.equal(p.status, 'pago');
@@ -110,7 +110,7 @@ test('cotação: 1=15, 2=30, 3=40 (+1 grátis), 5=55 (sugere pacote); sem atleta
 
 test('carrinho de 3 fotos: cobra 40, paga e baixa só as 3 escolhidas', async () => {
   const sel = [ids.a2, ids.a3, ids.b1];
-  const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 1, photoIds: sel, name: 'João', whatsapp: '27988887777', amount_cents: 1 }), env })).json();
+  const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 1, photoIds: sel, name: 'João', pin: '1234', whatsapp: '27988887777', amount_cents: 1 }), env })).json();
   assert.equal(lastPref.items[0].unit_price, 40);
   let p = await orderOf(c.token);
   assert.equal(p.status, 'aguardando'); assert.equal(p.photos.length, 0);
@@ -130,7 +130,7 @@ test('carrinho de 3 fotos: cobra 40, paga e baixa só as 3 escolhidas', async ()
 
 test('carrinho de 6 fotos do atleta vira pacote "todas" (libera até as não escolhidas)', async () => {
   const six = [...Object.values(ids), (await upload('a5.jpg', [1], 'ORIG-A5')), (await upload('a6.jpg', [1], 'ORIG-A6'))].slice(0, 6);
-  const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 1, photoIds: six, name: 'Ana', whatsapp: '27977776666' }), env })).json();
+  const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 1, photoIds: six, name: 'Ana', pin: '1234', whatsapp: '27977776666' }), env })).json();
   assert.equal(lastPref.items[0].unit_price, 60);
   await pay(6000);
   const p = await orderOf(c.token);
@@ -139,10 +139,10 @@ test('carrinho de 6 fotos do atleta vira pacote "todas" (libera até as não esc
 });
 
 test('"Quero todas" e validações do checkout', async () => {
-  const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 2, all: true, name: 'Rui', whatsapp: '27966665555' }), env })).json();
+  const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 2, all: true, name: 'Rui', pin: '1234', whatsapp: '27966665555' }), env })).json();
   assert.equal(lastPref.items[0].unit_price, 60);
   assert.ok(c.url);
-  const r = (b) => checkout.onRequestPost({ request: post('/api/checkout', { name: 'Rui', whatsapp: '27966665555', ...b }), env });
+  const r = (b) => checkout.onRequestPost({ request: post('/api/checkout', { name: 'Rui', pin: '1234', whatsapp: '27966665555', ...b }), env });
   assert.equal((await r({ photoIds: [] })).status, 400);
   assert.equal((await r({ photoIds: ['inexistente'] })).status, 400);
   assert.equal((await r({ all: true })).status, 400, 'todas exige atleta');

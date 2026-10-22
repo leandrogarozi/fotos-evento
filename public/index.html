@@ -3,7 +3,7 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Fotos do evento</title><link rel="stylesheet" href="style.css">
 </head><body>
-<div class="top wrap" style="padding-bottom:0"><span class="logo">LEANDRO GAROZI</span></div>
+<div class="top wrap" style="padding-bottom:0"><span class="logo">LEANDRO GAROZI</span><a class="chip" href="acesso.html" style="text-decoration:none;color:var(--ink)">Já comprei</a></div>
 <div class="wrap" id="root"><p class="muted" style="margin-top:40px">Carregando...</p></div>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -37,17 +37,28 @@ function presaleView(e) {
         <label>Seu nome</label><input id="name" required autocomplete="name">
         <label>Seu WhatsApp (com DDD)</label><input id="wpp" type="tel" inputmode="tel" required autocomplete="tel" placeholder="27 99999-9999">
         <label>E-mail (opcional)</label><input id="email" type="email" autocomplete="email">
+        <label>Crie uma senha de 4 a 6 números</label><input id="pin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{4,6}" required autocomplete="new-password" placeholder="Ex.: 1234">
+        <div class="hint-small">Você usa essa senha com o seu WhatsApp para baixar as fotos depois. Anote.</div>
         <button class="go full" id="go">Pagar com Pix ou cartão</button>
         <div class="err" id="err"></div>
       </form>
+    </div>
+    <div class="card" style="background:var(--card2);border:0">
+      <h2>Como funciona</h2>
+      <ol class="steps">
+        <li>Você paga com Pix ou cartão.</li>
+        <li>Quando o pagamento for confirmado, toque em <b>Voltar ao site</b>.</li>
+        <li>Depois do evento, volte aqui, toque em <b>Já comprei</b> e entre com seu WhatsApp e a senha que você criou.</li>
+      </ol>
     </div>`;
   until = e.presaleEnd; tick();
   $('f').addEventListener('submit', async (x) => {
     x.preventDefault(); $('err').textContent = ''; $('go').disabled = true;
     try {
       const r = await fetch('/api/presale', { method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ athleteId: $('athlete').value, name: $('name').value, whatsapp: $('wpp').value, email: $('email').value }) });
+        body: JSON.stringify({ athleteId: $('athlete').value, name: $('name').value, whatsapp: $('wpp').value, email: $('email').value, pin: $('pin').value }) });
       const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Erro');
+      try { localStorage.setItem('wpp', $('wpp').value); } catch (_) {}
       location.href = d.url;
     } catch (err) { $('err').textContent = err.message; $('go').disabled = false; }
   });
@@ -63,6 +74,7 @@ function storeView(e) {
       <select id="athlete"><option value="">Escolha o atleta</option>${options(e)}</select>
       <button class="go full" id="see">Ver minhas fotos</button>
       <a class="btn light full" style="width:100%;margin-top:12px" href="galeria.html">Ver todas as fotos</a>
+      <p class="hint-small" style="text-align:center;margin-top:16px">Já comprou? <a href="acesso.html" style="color:var(--moss);font-weight:700">Acesse suas fotos com WhatsApp e senha</a>.</p>
     </div>
     <div class="card" style="background:var(--card2);border:0">
       <h2>Quanto custa</h2>

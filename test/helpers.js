@@ -1,9 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 
-export function makeDB() {
+export const ALL_MIGRATIONS = ['0001_init.sql', '0002_atletas.sql', '0003_fotos.sql', '0004_acesso.sql'];
+export function makeDB(files = ALL_MIGRATIONS) {
   const db = new DatabaseSync(':memory:');
-  for (const f of ['0001_init.sql', '0002_atletas.sql', '0003_fotos.sql']) db.exec(readFileSync(new URL('../migrations/' + f, import.meta.url), 'utf8'));
+  for (const f of files) db.exec(readFileSync(new URL('../migrations/' + f, import.meta.url), 'utf8'));
   const prep = (sql) => {
     const mk = (args) => ({
       first: async () => db.prepare(sql).get(...args) ?? null,

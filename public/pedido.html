@@ -10,7 +10,7 @@
 .dl .b{padding:10px}
 .dl a{width:100%}
 </style></head><body>
-<div class="top wrap" style="padding-bottom:0"><span class="logo">LEANDRO GAROZI</span></div>
+<div class="top wrap" style="padding-bottom:0"><a class="logo" href="index.html" style="color:inherit;text-decoration:none">LEANDRO GAROZI</a><a class="chip" href="acesso.html" style="text-decoration:none;color:var(--ink)">Já comprei</a></div>
 <div class="wrap" id="c" style="max-width:900px"><p class="muted" style="margin-top:40px">Carregando...</p></div>
 <script>
 const t = new URLSearchParams(location.search).get('t');
@@ -48,19 +48,26 @@ async function load(sync) {
   if (!r.ok) { $('c').innerHTML = '<h1 style="margin-top:40px">Pedido <em>não encontrado</em></h1><p class="lead">Confira o link que você recebeu.</p>'; return; }
   const o = order = await r.json();
   const what = o.kind === 'todas' ? 'Pacote completo' : 'Fotos escolhidas';
-  const head = `<div class="eyebrow">Seu pedido <span class="pill ${o.status}" style="margin-left:6px">${o.status}</span></div>
-    <h1>${o.athlete ? esc(o.athlete.split(' ')[0]) + ': ' : ''}<em>${what.toLowerCase()}</em></h1>
-    <p class="lead">${reais(o.amount)} · ${esc(o.buyer)}</p>`;
+  const who = o.athlete ? esc(o.athlete) : 'Fotos avulsas';
+  const back = `<div class="box" style="margin-top:22px">Para voltar depois: abra o site, toque em <b>Já comprei</b> e entre com o seu <b>WhatsApp</b> e a <b>senha</b> que você criou.</div>`;
   if (o.status === 'aguardando') {
-    $('c').innerHTML = head + '<div class="box">Aguardando a confirmação do pagamento. Se você já pagou, espere alguns segundos: esta página atualiza sozinha.</div>';
+    $('c').innerHTML = `<div class="eyebrow">Seu pedido</div><h1>Aguardando o <em>pagamento</em></h1>
+      <p class="lead">${who} · ${what.toLowerCase()} · ${reais(o.amount)}</p>
+      <div class="box">Ainda não recebemos a confirmação. Se você já pagou, espere alguns segundos: esta página atualiza sozinha.</div>`;
     if (tries++ < 40) setTimeout(() => load(tries % 3 === 0), 4000);
   } else if (o.photos.length) {
-    $('c').innerHTML = head + `<div class="row" style="margin-top:22px"><button class="go" id="zip">Baixar todas (ZIP)</button><span class="muted" style="font-size:13px">${o.photos.length} foto${o.photos.length > 1 ? 's' : ''} em alta qualidade, sem marca d'água</span></div>
-      <div class="dgrid">${o.photos.map((p) => `<div class="dl"><img src="${p.thumb}" loading="lazy" alt=""><div class="b"><a class="btn light small" href="${p.url}" download>Baixar</a></div></div>`).join('')}</div>
-      <p class="muted" style="font-size:13px;margin-top:22px">Guarde este link: os links de download renovam sempre que você abre esta página.</p>`;
+    $('c').innerHTML = `<div class="eyebrow">Seu pedido</div><h1>Suas fotos <em>estão prontas</em></h1>
+      <p class="lead">${who} · ${what.toLowerCase()}</p>
+      <div class="row" style="margin-top:22px"><button class="go" id="zip">Baixar todas (ZIP)</button><span class="muted" style="font-size:13px">${o.photos.length} foto${o.photos.length > 1 ? 's' : ''} em alta qualidade, sem marca d'água</span></div>
+      <div class="dgrid">${o.photos.map((p) => `<div class="dl"><img src="${p.thumb}" loading="lazy" alt=""><div class="b"><a class="btn light small" href="${p.url}" download>Baixar</a></div></div>`).join('')}</div>${back}`;
     $('zip').onclick = async function () { this.disabled = true; try { await downloadZip(o.photos, this); } catch (e) { alert('Não consegui montar o ZIP. Baixe as fotos uma a uma.'); } this.textContent = 'Baixar todas (ZIP)'; this.disabled = false; };
   } else {
-    $('c').innerHTML = head + '<div class="box sage">Pagamento confirmado! Assim que eu publicar as suas fotos, o download libera sozinho aqui. Guarde este link e volte depois do evento.</div>';
+    $('c').innerHTML = `<div class="card" style="margin-top:28px"><div class="ok-mark">✓</div>
+      <h1 style="font-size:clamp(30px,8vw,44px)">Pagamento <em>confirmado</em></h1>
+      <p class="lead" style="margin-top:10px">${who} · ${what.toLowerCase()} · ${reais(o.amount)}</p>
+      <h2 style="margin-top:26px">E agora?</h2>
+      <ol class="steps"><li>Eu publico as suas fotos depois do evento.</li><li>Você volta neste site e toca em <b>Já comprei</b>.</li><li>Entra com o seu <b>WhatsApp</b> e a <b>senha</b> que criou, e baixa tudo.</li></ol>
+      <a class="btn go full" style="width:100%" href="index.html">Ir para o início</a></div>`;
   }
 }
 if (!t) $('c').innerHTML = '<h1 style="margin-top:40px">Link <em>inválido</em></h1>'; else load(true);
