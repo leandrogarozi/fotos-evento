@@ -37,6 +37,6 @@ export async function onRequestPost({ request, env }) {
     return json({ token: order.token, url: pref.init_point });
   } catch (e) {
     await env.DB.prepare("UPDATE orders SET status = 'erro' WHERE id = ?").bind(order.id).run();
-    return bad('Não consegui abrir o pagamento. Tente de novo em instantes.', 502);
+    return bad(`Não consegui abrir o pagamento. ${String(e.message).slice(0, 200)}`, 502);
   }
 }

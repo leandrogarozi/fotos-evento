@@ -18,7 +18,10 @@ export async function createPreference(env, { order, title, origin }) {
     }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error('Mercado Pago: ' + (data.message || res.status));
+  if (!res.ok) {
+    const cause = Array.isArray(data.cause) && data.cause[0] ? ' / ' + (data.cause[0].description || data.cause[0].code) : '';
+    throw new Error('Mercado Pago ' + res.status + ': ' + (data.message || data.error || 'sem detalhe') + cause);
+  }
   return data;
 }
 
