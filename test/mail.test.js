@@ -103,3 +103,45 @@ test('painel: excluir pedido e trocar o atleta do pedido', async () => {
   assert.equal((await list()).length, antes.length - 1);
   assert.equal((await aOrders.onRequestPost({ request: post('/o', { id: alvo.id, action: 'excluir' }, H), env })).status, 404);
 });
+
+test('painel: reenviar e-mail com senha corrigindo o e-mail (gera nova senha quando a antiga já foi enviada e apagada)', async () => {
+  mails = []; mailOk = true;
+  const { token } = await (await login.onRequestPost({ request: post('/l', { password: 'segredo' }), env })).json();
+  const H = { authorization: 'Bearer ' + token };
+  const t = await buy({ name: 'Luiza Prado', email: 'errado@exemplo.com', whatsapp: '27955550000', pin: '2468', athleteId: 3 });
+  await pay(30); assert.equal(mails.length, 1);
+  assert.equal((await row()).pin_enc, '', 'e-mail original saiu e a senha foi apagada');
+  const lista = async () => (await (await aOrders.onRequestGet({ request: req('/o', { headers: H }), env })).json()).orders;
+  const o = (await lista()).find((x) => x.buyer_name === 'Luiza Prado');
+  const re = (b) => aOrders.onRequestPost({ request: post('/o', { id: o.id, action: 'reenviar', ...b }, H), env });
+  assert.equal((await re({ email: 'sem-arroba' })).status, 400);
+  mails = [];
+  const r = await (await re({ email: 'certo@exemplo.com' })).json();
+  assert.equal(r.emailed, true); assert.equal(r.novaSenha, true); assert.match(r.pin, /^\d{6}$/);
+  assert.equal(mails.length, 1); assert.equal(mails[0].to, 'certo@exemplo.com'); assert.ok(mails[0].text.includes(r.pin));
+  assert.equal((await lista()).find((x) => x.id === o.id).email, 'certo@exemplo.com', 'e-mail corrigido no pedido');
+  const acc = (pin) => import('../functions/api/acesso.js').then((m) => m.onRequestPost({ request: post('/a', { whatsapp: '27955550000', pin }), env }));
+  assert.equal((await acc('2468')).status, 401, 'a senha antiga deixa de valer'); assert.equal((await acc(r.pin)).status, 200, 'a nova funciona');
+});
+
+test('reenviar: se o e-mail original falhou, reenvia a MESMA senha; se o envio falhar, devolve a senha para o WhatsApp; só pedido pago', async () => {
+  mails = []; mailOk = false;
+  const { token } = await (await login.onRequestPost({ request: post('/l', { password: 'segredo' }), env })).json();
+  const H = { authorization: 'Bearer ' + token };
+  const t = await buy({ name: 'Caio Nunes', email: 'caio@exemplo.com', whatsapp: '27944441111', pin: '1357', athleteId: 4 });
+  await pay(31);
+  assert.ok((await row()).pin_enc.length > 10, 'e-mail falhou: senha cifrada segue guardada');
+  const lista = async () => (await (await aOrders.onRequestGet({ request: req('/o', { headers: H }), env })).json()).orders;
+  const o = (await lista()).find((x) => x.buyer_name === 'Caio Nunes');
+  const re = () => aOrders.onRequestPost({ request: post('/o', { id: o.id, action: 'reenviar', email: 'caio@exemplo.com' }, H), env });
+  let r = await (await re()).json();
+  assert.equal(r.emailed, false); assert.equal(r.pin, '1357'); assert.equal(r.novaSenha, false, 'mesma senha que ele criou');
+  mailOk = true; mails = [];
+  r = await (await re()).json();
+  assert.equal(r.emailed, true); assert.equal(r.pin, '1357'); assert.ok(mails[0].text.includes('1357'));
+  assert.equal((await row()).pin_enc, '', 'depois de enviar, apaga');
+  // pedido ainda não pago
+  const p2 = await buy({ name: 'Rita Lopes', email: 'rita@exemplo.com', whatsapp: '27933332222', pin: '8642', athleteId: 5 });
+  const o2 = (await lista()).find((x) => x.buyer_name === 'Rita Lopes');
+  assert.equal((await aOrders.onRequestPost({ request: post('/o', { id: o2.id, action: 'reenviar', email: 'rita@exemplo.com' }, H), env })).status, 409);
+});

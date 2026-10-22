@@ -5,6 +5,7 @@ import { notifyPaid } from '../../_lib/paid.js';
 import { sendAccessEmail } from '../../_lib/mail.js';
 import { getOrder } from '../../_lib/db.js';
 import { normWpp, validPin, newPin } from '../../_lib/pin.js';
+import { decryptPin } from '../../_lib/secret.js';
 
 export async function onRequestGet({ request, env }) {
   if (!(await isAdmin(request, env))) return denied();
@@ -23,7 +24,8 @@ export async function onRequestGet({ request, env }) {
 // { id, action: 'liberar' | 'verificar' }
 export async function onRequestPost({ request, env }) {
   if (!(await isAdmin(request, env))) return denied();
-  const { id, action, pin, athleteId, force } = await readJson(request);
+  const b = await readJson(request);
+  const { id, action, pin, athleteId, force } = b;
   const order = await getOrder(env, 'o.id', id);
   if (!order) return bad('Pedido não encontrado.', 404);
   if (action === 'verificar') {
@@ -50,6 +52,23 @@ export async function onRequestPost({ request, env }) {
     if (!a) return bad('Atleta não encontrado.');
     await env.DB.prepare('UPDATE orders SET athlete_id = ? WHERE id = ?').bind(a.id, id).run();
     return json({ ok: true });
+  }
+  if (action === 'reenviar') {
+    if (!['pago', 'liberado'].includes(order.status)) return bad('Só dá para reenviar para pedidos pagos.', 409);
+    const email = String(b.email || '').trim().slice(0, 160);
+    if (!/^\S+@\S+\.\S+$/.test(email)) return bad('Informe um e-mail válido.');
+    const w = normWpp(order.whatsapp);
+    // Se a senha escolhida ainda estiver guardada (e-mail nunca saiu), reenvia a mesma; senão gera uma nova de 6 números.
+    let pinNow = order.pin_enc ? await decryptPin(env, order.pin_enc) : null, novaSenha = false;
+    if (!pinNow) {
+      pinNow = String(100000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 900000)); novaSenha = true;
+      const p = await newPin(pinNow, w);
+      await env.DB.prepare("UPDATE orders SET whatsapp = ?, pin_salt = ?, pin_hash = ?, pin_enc = '' WHERE id = ?").bind(w, p.salt, p.hash, id).run();
+    }
+    await env.DB.prepare('UPDATE orders SET email = ? WHERE id = ?').bind(email, id).run();
+    const emailed = await sendAccessEmail(env, { order: { ...order, email, whatsapp: w }, pin: pinNow, origin: new URL(request.url).origin });
+    if (emailed && !novaSenha) await env.DB.prepare("UPDATE orders SET pin_enc = '' WHERE id = ?").bind(id).run();
+    return json({ ok: true, emailed, email, pin: pinNow, novaSenha, mailConfigured: !!env.MAIL_WEBHOOK_URL });
   }
   if (action === 'senha') {
     if (!validPin(pin)) return bad('A senha tem de 4 a 6 números.');

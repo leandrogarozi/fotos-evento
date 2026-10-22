@@ -95,7 +95,7 @@ Sem reconhecimento facial (decisão consciente: o Claude não identifica pessoas
 
 Login com `ADMIN_PASSWORD` (token HMAC de 12 horas guardado na sessão do navegador).
 
-- **Pedidos**: lista, total vendido, status. Botões: Verificar (consulta o Mercado Pago), Liberar (marca como pago manualmente, serve se o webhook falhar, e também dispara o e-mail), Avisar (abre o WhatsApp do comprador com mensagem pronta), Ver (abre a página do pedido), Senha (redefine e reenvia), Atleta (corrige o atleta de um pedido), Excluir (pedido pago exige digitar EXCLUIR).
+- **Pedidos**: lista, total vendido, status. Botões: Verificar (consulta o Mercado Pago), Liberar (marca como pago manualmente, serve se o webhook falhar, e também dispara o e-mail), Avisar (abre o WhatsApp do comprador com mensagem pronta), Ver (abre a página do pedido), Reenviar e-mail (caixinha para confirmar/corrigir o e-mail; reenvia a mesma senha se ainda estiver guardada, senão gera uma nova de 6 números e mostra na tela), Senha (define uma senha escolhida e reenvia), Atleta (corrige o atleta de um pedido), Excluir (pedido pago exige digitar EXCLUIR).
 - **Preços e datas**: preços em R$, datas no horário de Brasília, botão "Agora" em "Fotos publicadas em", encerramento das vendas, limite de marcação, nome do evento e texto da marca d'água. Mostra um quadro com o encerramento efetivo.
 - **Fotos**: upload simples (JPG, todas entram na galeria geral; a pasta por atleta fica em "Avançado": nome da subpasta = nome do atleta, "Ana + Bruno" para duas pessoas, "Geral" para sem atleta). Em "Fotos enviadas": seleção múltipla, atribuir a atleta, tirar do atleta, deixar sem atleta e excluir em massa.
 - **Triagem**: identificar quem aparece em cada foto, uma por vez (teclado). A vitrine com marca d'água é gerada NO NAVEGADOR (canvas) e enviada junto com a original (PUT direto para o R2, 2 envios paralelos). Lista "Fotos enviadas" por atleta, todas ou gerais, com seleção múltipla e exclusão em massa.
@@ -119,7 +119,7 @@ functions/         API (Cloudflare Pages Functions, JavaScript ESM)
   api/             rotas (ver seção 6)
   img/[id].js      vitrine pública
 migrations/        0001 a 0006 (referência; o esquema também se completa sozinho em schema.js)
-test/              46 testes (node:test)
+test/              48 testes (node:test)
 docs/              este guia e enviar-email.gs
 ```
 
