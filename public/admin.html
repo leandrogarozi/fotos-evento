@@ -87,20 +87,21 @@ async function lp() {
   athletesCache = d.athletes; if (ev.brandText) brandText = ev.brandText;
   $('photos').innerHTML = `<h2>Fotos (${d.total} publicadas)</h2>
     <p class="muted" style="font-size:13px;margin-bottom:14px">Escolha de quem são as fotos e envie os JPGs editados. A original fica privada e a vitrine sai com marca d'água no meio. Uma foto pode ter mais de um atleta: marque todos.</p>
+    <label style="display:flex;gap:10px;align-items:center;color:var(--ink);margin-bottom:10px"><input type="checkbox" id="geral"> Fotos gerais (sem atleta específico: torcida, ambiente, premiação)</label>
     <label>Atletas desta leva</label>
     <div style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:14px;padding:8px 12px;background:var(--paper)">` +
       d.athletes.map(a => `<label style="display:flex;gap:10px;align-items:center;margin:0;padding:5px 0;color:var(--ink)"><input type="checkbox" class="pa" value="${a.id}"> ${esc(a.name)} <span class="muted" style="margin-left:auto;font-size:12px">${a.n} foto${a.n === 1 ? '' : 's'}</span></label>`).join('') + `</div>
     <label>Arquivos JPG</label><input type="file" id="files" accept="image/jpeg" multiple>
-    <label>Ou uma pasta por atleta (o nome da pasta tem que ser o nome do atleta; use " + " para dois atletas)</label><input type="file" id="folder" webkitdirectory multiple>
+    <label>Ou uma pasta por atleta (o nome da pasta tem que ser o nome do atleta; "Ana Karolina + Bruno Padilha" para dois atletas na mesma foto; "Geral" para fotos sem atleta)</label><input type="file" id="folder" webkitdirectory multiple>
     <button class="full" id="up">Enviar fotos</button>
     <div id="uplog" class="muted" style="font-size:13px;margin-top:12px;white-space:pre-line"></div>
     <h2 style="margin-top:30px">Fotos enviadas</h2>
-    <select id="pm-ath"><option value="">Escolha o atleta para ver as fotos</option>${d.athletes.map(a => `<option value="${a.id}">${esc(a.name)} (${a.n})</option>`).join('')}</select>
+    <select id="pm-ath"><option value="">Escolha o atleta para ver as fotos</option><option value="geral">Fotos gerais (sem atleta)</option>${d.athletes.map(a => `<option value="${a.id}">${esc(a.name)} (${a.n})</option>`).join('')}</select>
     <div id="pm-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:14px"></div>`;
   $('up').onclick = startUpload;
   $('pm-ath').onchange = async () => {
     const a = $('pm-ath').value; if (!a) { $('pm-grid').innerHTML = ''; return; }
-    const r = await (await fetch('/api/photos?athlete=' + a)).json();
+    const r = await (await fetch(a === 'geral' ? '/api/photos?geral=1' : '/api/photos?athlete=' + a)).json();
     $('pm-grid').innerHTML = r.photos.length ? r.photos.map(id => `<div style="position:relative"><img src="/img/${id}" alt="" style="width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:14px;display:block"><button class="small" style="position:absolute;left:8px;bottom:8px" onclick="delPhoto('${id}')">Excluir</button></div>`).join('') : '<p class="muted" style="grid-column:1/-1">Nenhuma foto deste atleta.</p>';
   };
 }
@@ -141,18 +142,19 @@ const put = async (id, kind, body) => {
   const r = await fetch(`/api/admin/photo/${id}/${kind}`, { method: 'PUT', headers: { authorization: 'Bearer ' + tok, 'content-type': 'image/jpeg' }, body });
   if (!r.ok) throw new Error('falha ao enviar ' + kind);
 };
-async function sendOne(file, athleteIds) {
+async function sendOne(file, athleteIds, geral) {
   const prev = await makePreview(file);
-  const { id } = await api('photo', { filename: file.name, athleteIds });
+  const { id } = await api('photo', { filename: file.name, athleteIds, geral: !!geral });
   try { await put(id, 'prev', prev); await put(id, 'orig', file); }
   catch (e) { await fetch('/api/admin/photo/' + id, { method: 'DELETE', headers: { authorization: 'Bearer ' + tok } }); throw e; }
 }
 async function startUpload() {
   const checked = [...document.querySelectorAll('.pa:checked')].map(i => Number(i.value));
   const jobs = [], skipped = [];
-  [...$('files').files].forEach(f => checked.length ? jobs.push({ f, ids: checked }) : skipped.push(f.name + ' (marque um atleta)'));
+  [...$('files').files].forEach(f => (checked.length || $('geral').checked) ? jobs.push({ f, ids: checked, geral: !checked.length }) : skipped.push(f.name + ' (marque um atleta ou "fotos gerais")'));
   [...$('folder').files].filter(f => /image\/jpeg/.test(f.type)).forEach(f => {
     const parts = (f.webkitRelativePath || '').split('/'); const folder = parts[parts.length - 2] || '';
+    if (norm(folder) === 'geral') { jobs.push({ f, ids: [], geral: true }); return; }
     const ids = folder.split('+').map(n => athletesCache.find(a => norm(a.name) === norm(n))).filter(Boolean).map(a => a.id);
     ids.length ? jobs.push({ f, ids }) : skipped.push(f.webkitRelativePath + ' (pasta não bate com nenhum atleta)');
   });
@@ -160,7 +162,7 @@ async function startUpload() {
   $('up').disabled = true; let done = 0; const fails = [];
   const q = jobs.slice();
   const worker = async () => { while (q.length) { const j = q.shift(); log.textContent = `Enviando ${done + fails.length + 1} de ${jobs.length}: ${j.f.name}`;
-    try { await sendOne(j.f, j.ids); } catch (e) { try { await sendOne(j.f, j.ids); } catch (e2) { fails.push(j.f.name); continue; } } done++; } };
+    try { await sendOne(j.f, j.ids, j.geral); } catch (e) { try { await sendOne(j.f, j.ids, j.geral); } catch (e2) { fails.push(j.f.name); continue; } } done++; } };
   await Promise.all([worker(), worker()]);
   log.textContent = `Pronto: ${done} enviada(s).` + (fails.length ? `\nFalharam: ${fails.join(', ')}` : '') + (skipped.length ? `\nIgnoradas:\n${skipped.join('\n')}` : '');
   $('up').disabled = false; lp().then(() => { $('uplog').textContent = log.textContent; });

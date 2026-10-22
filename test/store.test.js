@@ -42,7 +42,7 @@ const pay = async (amountCents) => {
 
 let H;
 const upload = async (filename, athleteIds, origTxt) => {
-  const { id } = await (await aPhoto.onRequestPost({ request: post('/p', { filename, athleteIds }, H), env })).json();
+  const { id } = await (await aPhoto.onRequestPost({ request: post('/p', { filename, athleteIds, geral: !athleteIds.length }, H), env })).json();
   for (const [kind, txt] of [['orig', origTxt], ['prev', 'PREVIEW-' + origTxt]]) {
     const r = await aPhotoPut.onRequestPut({ params: { id, kind }, request: req('/x', { method: 'PUT', headers: H, body: bytes(txt) }), env });
     assert.equal(r.status, 200);
@@ -153,4 +153,16 @@ test('apagar foto remove do R2 e da vitrine', async () => {
   assert.equal(env.FOTOS.store.has(`orig/${ids.b1}`), false);
   const l = await (await photosApi.onRequestGet({ request: req('/api/photos?athlete=2'), env })).json();
   assert.equal(l.photos.length, 1);
+});
+
+test('fotos gerais (sem atleta): aparecem só na galeria geral e se apagam normalmente', async () => {
+  const antes = (await (await photosApi.onRequestGet({ request: req('/api/photos'), env })).json()).photos.length;
+  const g = await upload('torcida.jpg', [], 'ORIG-G');
+  const geral = await (await photosApi.onRequestGet({ request: req('/api/photos?geral=1'), env })).json();
+  assert.deepEqual(geral.photos, [g]);
+  assert.equal((await (await photosApi.onRequestGet({ request: req('/api/photos'), env })).json()).photos.length, antes + 1);
+  assert.equal((await (await photosApi.onRequestGet({ request: req('/api/photos?athlete=1'), env })).json()).photos.includes(g), false);
+  assert.equal((await aPhoto.onRequestPost({ request: post('/p', { filename: 'x.jpg', athleteIds: [] }, H), env })).status, 400, 'sem atleta e sem marcar geral continua barrado');
+  await aPhotoDel.onRequestDelete({ params: { id: g }, request: req('/d', { method: 'DELETE', headers: H }), env });
+  assert.equal((await (await photosApi.onRequestGet({ request: req('/api/photos?geral=1'), env })).json()).photos.length, 0);
 });

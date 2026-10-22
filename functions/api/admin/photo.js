@@ -6,7 +6,7 @@ export async function onRequestPost({ request, env }) {
   if (!(await isAdmin(request, env))) return denied();
   const b = await readJson(request);
   const ids = [...new Set((b.athleteIds || []).map(Number).filter(Boolean))];
-  if (!ids.length) return bad('Escolha pelo menos um atleta.');
+  if (!ids.length && !b.geral) return bad('Escolha pelo menos um atleta (ou marque foto geral).');
   const id = uid();
   await env.DB.batch([
     env.DB.prepare('INSERT INTO photos (id, filename, created_at) VALUES (?, ?, ?)')
