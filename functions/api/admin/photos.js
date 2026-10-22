@@ -23,8 +23,19 @@ export async function onRequestPost({ request, env }) {
   if (!(await isAdmin(request, env))) return denied();
   const b = await readJson(request);
   const ids = [...new Set((b.ids || []).map(String))].filter((id) => /^[0-9a-f-]{36}$/.test(id)).slice(0, 500);
-  if (b.action !== 'delete' || !ids.length) return bad('Nada para excluir.');
+  if (!ids.length) return bad('Nenhuma foto selecionada.');
   const js = JSON.stringify(ids);
+  if (['assign', 'unassign', 'clear'].includes(b.action)) {
+    if (b.action === 'clear') await env.DB.prepare('DELETE FROM photo_athletes WHERE photo_id IN (SELECT value FROM json_each(?))').bind(js).run();
+    else {
+      const a = await env.DB.prepare('SELECT id FROM athletes WHERE id = ?').bind(Number(b.athleteId)).first();
+      if (!a) return bad('Atleta não encontrado.');
+      if (b.action === 'assign') await env.DB.prepare('INSERT OR IGNORE INTO photo_athletes (photo_id, athlete_id) SELECT p.id, ? FROM photos p WHERE p.id IN (SELECT value FROM json_each(?))').bind(a.id, js).run();
+      else await env.DB.prepare('DELETE FROM photo_athletes WHERE athlete_id = ? AND photo_id IN (SELECT value FROM json_each(?))').bind(a.id, js).run();
+    }
+    return json({ ok: true, count: ids.length });
+  }
+  if (b.action !== 'delete') return bad('Ação inválida.');
   await env.FOTOS.delete(ids.flatMap((id) => [`orig/${id}`, `prev/${id}`]));
   await env.DB.batch([
     env.DB.prepare('DELETE FROM order_photos WHERE photo_id IN (SELECT value FROM json_each(?))').bind(js),

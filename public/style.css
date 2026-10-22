@@ -54,7 +54,8 @@ th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute
 .prices{display:grid;gap:0;margin-top:6px}
 .prices div{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0;border-bottom:1px solid var(--line)}
 .prices div:last-child{border-bottom:0}
-.prices b{font-family:'Playfair Display',serif;font-weight:400;font-size:22px}
+.prices b{font-family:'Playfair Display',serif;font-weight:400;font-size:22px;white-space:nowrap;margin-left:14px}
+.prices span{flex:1}
 .steps{list-style:none;counter-reset:s;margin-top:14px;display:grid;gap:12px}
 .steps li{counter-increment:s;position:relative;padding-left:42px;min-height:28px;font-size:15px}
 .steps li::before{content:counter(s);position:absolute;left:0;top:0;width:28px;height:28px;border-radius:50%;background:var(--sage);color:var(--ink);display:grid;place-items:center;font-size:13px;font-weight:700}

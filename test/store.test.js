@@ -214,3 +214,26 @@ test('sem limite por padrão: marca muitas fotos de uma vez; exclusão em massa 
   assert.equal(many.some((id) => env.FOTOS.store.has(`orig/${id}`) || env.FOTOS.store.has(`prev/${id}`)), false);
   assert.equal((await aPhotos.onRequestPost({ request: post('/a', { action: 'delete', ids: many }), env })).status, 401, 'só o admin apaga');
 });
+
+test('atribuir fotos gerais a um atleta (em massa), tirar e deixar sem atleta', async () => {
+  const g1 = await upload('x1.jpg', [], 'ORIG-X1'), g2 = await upload('x2.jpg', [], 'ORIG-X2');
+  const act = (b) => aPhotos.onRequestPost({ request: post('/a', b, H), env });
+  const list = async (q) => (await (await photosApi.onRequestGet({ request: req('/api/photos' + q), env })).json()).photos;
+  assert.equal((await act({ action: 'assign', ids: [g1, g2], athleteId: 99999 })).status, 400);
+  assert.equal((await act({ action: 'assign', ids: [g1, g2], athleteId: 6 })).status, 200);
+  assert.equal((await act({ action: 'assign', ids: [g1, g2], athleteId: 6 })).status, 200, 'repetir não duplica nem quebra');
+  assert.deepEqual((await list('?athlete=6')).sort(), [g1, g2].sort());
+  assert.equal((await list('?geral=1')).some((id) => [g1, g2].includes(id)), false, 'saiu das gerais');
+  assert.equal((await list('')).includes(g1), true, 'continua na galeria geral de venda');
+  // quem comprou o pacote do atleta passa a ver
+  const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 6, all: true, name: 'Gi', pin: '1234', email: 'g@b.com', whatsapp: '27922221111' }), env })).json();
+  await pay(6000);
+  assert.equal((await orderOf(c.token)).photos.length, 2);
+  await act({ action: 'unassign', ids: [g1], athleteId: 6 });
+  assert.deepEqual(await list('?athlete=6'), [g2]);
+  assert.equal((await orderOf(c.token)).photos.length, 1);
+  await act({ action: 'clear', ids: [g2] });
+  assert.equal((await list('?athlete=6')).length, 0);
+  assert.equal((await list('?geral=1')).includes(g2), true);
+  assert.equal((await aPhotos.onRequestPost({ request: post('/a', { action: 'assign', ids: [g1], athleteId: 6 }), env })).status, 401);
+});

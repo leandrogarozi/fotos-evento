@@ -69,16 +69,25 @@ const FIELDS = [
   ['Evento'],
   ['event_name', 'Nome do evento', 'text'], ['event_date', 'Data do evento', 'date'], ['whatsapp', 'Seu WhatsApp (com 55)', 'text'], ['brand_text', 'Texto da marca d\'água', 'text'],
   ['Preços (em R$)'],
-  ['presale_price_cents', 'Pacote completo na pré-venda', 'money'], ['price_one_cents', '1 foto', 'money'], ['price_four_cents', '4 fotos', 'money'],
+  ['presale_price_cents', 'Pacote completo na pré-venda', 'money'], ['price_tiers', 'Pacotes de fotos avulsas (quantidade e preço). O site cobra sempre o menor valor possível.', 'tiers'],
   ['price_all_event_cents', 'Pacote completo depois da pré-venda', 'money'], ['price_all_late_cents', 'Pacote completo depois do prazo', 'money'], ['price_box_cents', 'Pacote do box', 'money'],
   ['Datas (horário de Brasília)'],
   ['presale_end', 'Fim da pré-venda', 'datetime'], ['published_at', 'Fotos publicadas em (a partir daqui conta o prazo do preço)', 'datetime', true],
   ['late_after_days', 'Dias com o preço "depois da pré-venda"', 'number'],
   ['sales_end', 'Encerramento das vendas (data e hora)', 'datetime', true],
   ['sales_days', 'Ou: dias de venda depois de "fotos publicadas" (0 = não usar)', 'number'],
+  ['Textos do site (use *asteriscos* para destacar: verde nos títulos, negrito nos textos)'],
+  ['txt_presale_title', 'Pré-venda: título', 'textline'], ['txt_presale_lead', 'Pré-venda: texto', 'textarea'],
+  ['txt_presale_after_title', 'Pré-venda: título da lista "depois da pré-venda"', 'textline'], ['txt_presale_after_note', 'Pré-venda: texto da lista "depois da pré-venda"', 'textarea'],
+  ['txt_store_title', 'Loja (depois da pré-venda): título', 'textline'], ['txt_store_lead', 'Loja: texto', 'textarea'],
+  ['txt_gallery_title', 'Galeria geral: título', 'textline'], ['txt_gallery_title_athlete', 'Galeria de um atleta: título ({nome} = nome do atleta)', 'textline'], ['txt_gallery_lead', 'Galeria: texto', 'textarea'],
+  ['txt_claim_title', 'Marcar minhas fotos: título', 'textline'], ['txt_claim_lead', 'Marcar minhas fotos: texto', 'textarea'],
+  ['txt_closed_title', 'Vendas encerradas: título', 'textline'], ['txt_closed_lead', 'Vendas encerradas: texto', 'textarea'],
   ['Marcação de fotos'],
   ['claim_max', 'Limite de fotos que quem comprou o pacote pode marcar (0 = sem limite)', 'number'],
 ];
+const tierRow = (t) => `<div class="row tier" style="flex-wrap:nowrap;gap:8px;margin-bottom:8px"><input type="number" min="1" max="300" class="tn" value="${t.n}" style="width:90px"><span style="white-space:nowrap;font-size:14px">foto(s) por R$</span><input class="tp" inputmode="decimal" value="${money(t.cents)}" style="width:120px"><button type="button" class="small ghost" onclick="this.parentNode.remove()">Remover</button></div>`;
+function addTier() { $('tiers').insertAdjacentHTML('beforeend', tierRow({ n: '', cents: 0 })); }
 const money = (c) => (Number(c || 0) / 100).toFixed(2).replace('.', ',');
 const toCents = (v) => { let t = String(v).replace(/[^\d,.]/g, ''); if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.'); const n = parseFloat(t); return Number.isFinite(n) ? Math.round(n * 100) : NaN; };
 const toLocal = (iso) => { const t = Date.parse(iso); return t ? new Date(t - 3 * 3600e3).toISOString().slice(0, 19) : ''; };
@@ -91,6 +100,9 @@ async function lc() {
     if (type === 'money') return `<div style="position:relative"><span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--mute)">R$</span><input data-k="${k}" data-t="money" inputmode="decimal" value="${money(v)}" style="padding-left:44px"></div>`;
     if (type === 'datetime') return `<div class="row" style="flex-wrap:nowrap;gap:8px"><input type="datetime-local" step="1" data-k="${k}" data-t="datetime" value="${toLocal(v)}">${f[3] ? `<button type="button" class="small ghost" onclick="const i=this.parentNode.querySelector('input');i.value=toLocal(new Date().toISOString())">Agora</button><button type="button" class="small ghost" onclick="this.parentNode.querySelector('input').value=''">Limpar</button>` : ''}</div>`;
     if (type === 'date') return `<input type="date" data-k="${k}" data-t="date" value="${esc(v)}">`;
+    if (type === 'tiers') return `<div id="tiers" data-k="price_tiers" data-t="tiers">${(c.tiers || []).map(tierRow).join('')}</div><button type="button" class="small ghost" style="margin-top:4px" onclick="addTier()">+ Adicionar pacote</button>`;
+    if (type === 'textarea') return `<textarea data-k="${k}" data-t="text" rows="3">${esc(v)}</textarea>`;
+    if (type === 'textline') return `<input data-k="${k}" data-t="text" value="${esc(v)}">`;
     if (type === 'number') return `<input type="number" min="0" data-k="${k}" data-t="number" value="${esc(v)}">`;
     return `<input data-k="${k}" data-t="text" value="${esc(v)}">`;
   };
@@ -98,11 +110,16 @@ async function lc() {
   const eff = close ? 'Vendas encerram em <b>' + new Date(close).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }) + '</b>' + (close < Date.now() ? ' (já encerradas)' : '') : 'Sem encerramento definido: as vendas ficam abertas.';
   $('config').innerHTML = '<h2>Preços e datas</h2><div class="box sage" style="margin:0 0 6px">' + eff + '</div><div class="grid">' + FIELDS.map(f => f.length === 1
     ? `<h3 style="grid-column:1/-1;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:14px 0 0;font-weight:500">${f[0]}</h3>`
-    : `<div><label>${f[1]}</label>${input(f)}</div>`).join('') + '</div><button class="full" id="sv">Salvar</button><div class="err" id="cerr"></div>';
+    : `<div${f[2] === 'textarea' || f[2] === 'textline' || f[2] === 'tiers' ? ' style="grid-column:1/-1"' : ''}><label>${f[1]}</label>${input(f)}</div>`).join('') + '</div><button class="full" id="sv">Salvar</button><div class="err" id="cerr"></div>';
   $('sv').onclick = async () => {
     const b = {}; let bad = '';
     document.querySelectorAll('#config [data-k]').forEach(i => {
       const k = i.dataset.k, t = i.dataset.t;
+      if (t === 'tiers') {
+        const rows = [...document.querySelectorAll('#tiers .tier')].map(r => ({ n: Number(r.querySelector('.tn').value), cents: toCents(r.querySelector('.tp').value) }));
+        if (!rows.length || rows.some(r => !(r.n >= 1 && r.n <= 300 && Number.isInteger(r.n) && r.cents >= 100))) bad = 'Pacotes de fotos: informe quantidade (1 a 300) e preço de pelo menos R$ 1,00 em cada linha.';
+        b[k] = JSON.stringify(rows); return;
+      }
       if (t === 'money') { const n = toCents(i.value); if (isNaN(n)) bad = 'Valor inválido em "' + i.closest('div[style], div').parentNode.querySelector('label').textContent + '".'; b[k] = n; }
       else if (t === 'datetime') b[k] = i.value === toLocal(c[k]) ? (c[k] || '') : fromLocal(i.value);
       else b[k] = i.value;
@@ -145,13 +162,11 @@ async function lp() {
   const [d, ev] = await Promise.all([api('photos'), fetch('/api/event').then(r => r.json()).catch(() => ({}))]);
   athletesCache = d.athletes; if (ev.brandText) brandText = ev.brandText;
   $('photos').innerHTML = `<h2>Fotos (${d.total} publicadas)</h2>
-    <p class="muted" style="font-size:13px;margin-bottom:14px">Escolha de quem são as fotos e envie os JPGs editados. A original fica privada e a vitrine sai com marca d'água no meio. Uma foto pode ter mais de um atleta: marque todos.</p>
-    <label style="display:flex;gap:10px;align-items:center;color:var(--ink);margin-bottom:10px"><input type="checkbox" id="geral"> Fotos gerais (sem atleta específico: torcida, ambiente, premiação)</label>
-    <label>Atletas desta leva</label>
-    <div style="max-height:200px;overflow:auto;border:1px solid var(--line);border-radius:14px;padding:8px 12px;background:var(--paper)">` +
-      d.athletes.map(a => `<label style="display:flex;gap:10px;align-items:center;margin:0;padding:5px 0;color:var(--ink)"><input type="checkbox" class="pa" value="${a.id}"> ${esc(a.name)} <span class="muted" style="margin-left:auto;font-size:12px">${a.n} foto${a.n === 1 ? '' : 's'}</span></label>`).join('') + `</div>
-    <label>Arquivos JPG</label><input type="file" id="files" accept="image/jpeg" multiple>
-    <label>Ou uma pasta por atleta (o nome da pasta tem que ser o nome do atleta; "Ana Karolina + Bruno Padilha" para dois atletas na mesma foto; "Geral" para fotos sem atleta)</label><input type="file" id="folder" webkitdirectory multiple>
+    <p class="muted" style="font-size:13px;margin-bottom:14px">Envie os JPGs editados: todos entram na galeria. A original fica privada e a vitrine sai com marca d'água no meio. Depois, em "Fotos enviadas" abaixo, você pode selecionar fotos e atribuir a um atleta, se souber quem é.</p>
+    <label>Escolha as fotos (JPG). Todas entram na galeria.</label><input type="file" id="files" accept="image/jpeg" multiple>
+    <details style="margin-top:14px"><summary class="muted" style="cursor:pointer;font-size:13px">Avançado: já tenho as fotos separadas em pastas por atleta</summary>
+      <label>Escolha a pasta (o nome de cada subpasta tem que ser o nome do atleta; "Ana + Bruno" para dois atletas; "Geral" para sem atleta)</label><input type="file" id="folder" webkitdirectory multiple>
+    </details>
     <button class="full" id="up">Enviar fotos</button>
     <div id="uplog" class="muted" style="font-size:13px;margin-top:12px;white-space:pre-line"></div>
     <h2 style="margin-top:30px">Fotos enviadas</h2>
@@ -209,6 +224,12 @@ function pmRender() {
   $('pm-bar').innerHTML = pmIds.length ? `<span class="muted" style="font-size:13px">${pmIds.length} foto${pmIds.length > 1 ? 's' : ''}</span>
     <button class="small ghost" onclick="pmAll()">Selecionar todas</button><button class="small ghost" onclick="pmNone()">Limpar seleção</button>
     <button class="small" ${n ? '' : 'disabled'} onclick="pmDelete()">Excluir selecionadas (${n})</button>` : '';
+  $('pm-bar').innerHTML += pmIds.length && n ? `<div class="row" style="width:100%;margin-top:8px;padding:10px;background:var(--card2);border-radius:14px">
+    <span style="font-size:13px">Atribuir as ${n} selecionada${n > 1 ? 's' : ''} a:</span>
+    <select id="pm-to" style="flex:1;min-width:160px"><option value="">Escolha o atleta</option>${athletesCache.map(a => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</select>
+    <button class="small" onclick="pmAssign('assign')">Atribuir</button>
+    ${/^\d+$/.test($('pm-ath').value) ? `<button class="small ghost" onclick="pmAssign('unassign')">Tirar deste atleta</button>` : ''}
+    <button class="small ghost" onclick="pmAssign('clear')">Deixar sem atleta</button></div>` : '';
   $('pm-grid').innerHTML = pmIds.length ? pmIds.map(id => { const on = pmSel.has(id); return `<div onclick="pmToggle('${id}')" style="position:relative;cursor:pointer">
       <img src="/img/${id}" loading="lazy" alt="" style="width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:14px;display:block;outline:${on ? '3px solid var(--moss)' : '0'};outline-offset:-3px">
       <span style="position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;background:${on ? 'var(--moss)' : 'rgba(255,255,255,.92)'};color:#fff;display:grid;place-items:center;font-size:14px">${on ? '✓' : ''}</span></div>`; }).join('')
@@ -217,6 +238,18 @@ function pmRender() {
 function pmToggle(id) { pmSel.has(id) ? pmSel.delete(id) : pmSel.add(id); pmRender(); }
 function pmAll() { pmSel = new Set(pmIds); pmRender(); }
 function pmNone() { pmSel = new Set(); pmRender(); }
+async function pmAssign(action) {
+  const ids = [...pmSel]; if (!ids.length) return;
+  const body = { action, ids };
+  if (action === 'assign') { const a = $('pm-to') && $('pm-to').value; if (!a) { alert('Escolha o atleta.'); return; } body.athleteId = Number(a); }
+  if (action === 'unassign') body.athleteId = Number($('pm-ath').value);
+  const nome = body.athleteId ? (athletesCache.find(a => a.id === body.athleteId) || {}).name : '';
+  const msg = action === 'assign' ? `Atribuir ${ids.length} foto(s) a ${nome}? Quem comprou o pacote completo dele passa a ver essas fotos.` : action === 'unassign' ? `Tirar ${ids.length} foto(s) de ${nome}?` : `Deixar ${ids.length} foto(s) sem atleta?`;
+  if (!confirm(msg)) return;
+  try { for (let i = 0; i < ids.length; i += 300) await api('photos', { ...body, ids: ids.slice(i, i + 300) }); }
+  catch (e) { alert('Erro: ' + e.message); return; }
+  const v = $('pm-ath').value; await lp(); $('pm-ath').value = v; await pmLoad();
+}
 async function pmDelete() {
   const ids = [...pmSel]; if (!ids.length) return;
   if (ids.length > 10) { if (prompt(`Você vai excluir ${ids.length} fotos. Elas somem da vitrine e dos downloads de quem comprou. Não dá para desfazer.\n\nDigite EXCLUIR para confirmar:`) !== 'EXCLUIR') return; }
@@ -236,11 +269,8 @@ async function sendOne(file, athleteIds, geral) {
   catch (e) { await fetch('/api/admin/photo/' + id, { method: 'DELETE', headers: { authorization: 'Bearer ' + tok } }); throw e; }
 }
 async function startUpload() {
-  const checked = [...document.querySelectorAll('.pa:checked')].map(i => Number(i.value));
-  if ($('files').files.length && !checked.length && !$('geral').checked &&
-      confirm('Você não marcou nenhum atleta.\n\nEnviar essas ' + $('files').files.length + ' foto(s) como FOTOS GERAIS (sem atleta)?\n\nOK = enviar como gerais\nCancelar = voltar e marcar o atleta')) $('geral').checked = true;
   const jobs = [], skipped = [];
-  [...$('files').files].forEach(f => (checked.length || $('geral').checked) ? jobs.push({ f, ids: checked, geral: !checked.length }) : skipped.push(f.name + ' (marque um atleta ou "fotos gerais")'));
+  [...$('files').files].forEach(f => jobs.push({ f, ids: [], geral: true }));
   [...$('folder').files].filter(f => /image\/jpeg/.test(f.type)).forEach(f => {
     const parts = (f.webkitRelativePath || '').split('/'); const folder = parts[parts.length - 2] || '';
     if (norm(folder) === 'geral') { jobs.push({ f, ids: [], geral: true }); return; }

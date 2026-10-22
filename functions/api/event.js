@@ -1,6 +1,6 @@
 import { json } from '../_lib/util.js';
 import { getConfig } from '../_lib/db.js';
-import { isPresale, allPrice, allPriceDeadline, salesCloseAt, salesOpen } from '../_lib/pricing.js';
+import { DEFAULTS, parseTiers, isPresale, allPrice, allPriceDeadline, salesCloseAt, salesOpen } from '../_lib/pricing.js';
 
 export async function onRequestGet({ env }) {
   const cfg = await getConfig(env);
@@ -14,8 +14,10 @@ export async function onRequestGet({ env }) {
     eventDate: cfg.event_date,
     whatsapp: cfg.whatsapp,
     brandText: cfg.brand_text,
+    texts: Object.fromEntries(Object.keys(DEFAULTS).filter((k) => k.startsWith('txt_')).map((k) => [k, cfg[k] || DEFAULTS[k]])),
     claimMax: Math.max(0, Number(cfg.claim_max) || 0),
-    prices: { one: cfg.price_one_cents, four: cfg.price_four_cents },
+    tiers: parseTiers(cfg),
+    prices: { one: (parseTiers(cfg).find((t) => t.n === 1) || {}).cents || null, four: (parseTiers(cfg).find((t) => t.n === 4) || {}).cents || null },
     presale: isPresale(cfg, now),
     salesEnd: salesCloseAt(cfg) ? new Date(salesCloseAt(cfg)).toISOString() : null,
     salesClosed: !salesOpen(cfg, now),

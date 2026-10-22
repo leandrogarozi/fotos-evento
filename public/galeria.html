@@ -51,7 +51,7 @@
   <form id="f">
     <label>Seu nome</label><input id="name" required autocomplete="name">
     <label>Seu WhatsApp (com DDD)</label><input id="wpp" type="tel" inputmode="tel" required autocomplete="tel" placeholder="27 99999-9999">
-    <label>Seu e-mail</label><input id="email" type="email" required autocomplete="email" placeholder="para onde enviamos sua senha e o link">
+    <label>Seu e-mail</label><input id="email" type="email" required autocomplete="email" placeholder="seu melhor e-mail">
     <label>Crie uma senha de 4 a 6 números</label><input class="pin" id="pin" type="password" inputmode="numeric" maxlength="6" required autocomplete="new-password" placeholder="Ex.: 1234">
     <div class="hint-small">Você usa essa senha com o seu WhatsApp para baixar as fotos depois. Anote.</div>
     <button class="go full" id="pay">Ir para o pagamento</button>
@@ -78,11 +78,11 @@ const load = () => { if (CLAIM) return []; try { return JSON.parse(localStorage.
 function header() {
   const ath = ev.athletes.find((a) => a.id === A);
   const first = ath ? ath.name.split(' ')[0] : '';
-  const dl = ev.deadline;
+  const dl = ev.deadline, T = ev.texts || {};
   $('root').innerHTML = `
     <div class="eyebrow">${esc(ev.eventName)}</div>
-    <h1>${CLAIM ? 'Encontre <em>suas fotos</em>' : ath ? `Fotos de <em>${esc(first)}</em>` : 'Todas as <em>fotos</em>'}</h1>
-    <p class="lead">${CLAIM ? `Toque no coração das fotos em que <b>você aparece</b>. Marque quantas quiser. Depois toque em <b>Salvar minhas fotos</b>. ` : ''}${CLAIM ? '' : ath ? `Você aparece em <b>${ids.length}</b> foto${ids.length === 1 ? '' : 's'}. ` : ''}${CLAIM ? '' : 'Toque na foto para ampliar e no coração para escolher.'}</p>
+    <h1>${tTitle(CLAIM ? T.txt_claim_title : ath ? T.txt_gallery_title_athlete : T.txt_gallery_title, { nome: first })}</h1>
+    <p class="lead">${CLAIM ? tLead(T.txt_claim_lead) : (ath ? `Você aparece em <b>${ids.length}</b> foto${ids.length === 1 ? '' : 's'}. ` : '') + tLead(T.txt_gallery_lead)}</p>
     ${!CLAIM && ev.salesEnd ? `<div class="box sage" style="max-width:560px;font-size:15px"><b>Vendas encerram em ${fmt(ev.salesEnd)}</b>. Depois disso não será possível comprar.</div>` : ''}
     ${!CLAIM && ath && dl.until ? `<div class="box sage" style="max-width:560px">Pacote completo por ${reais(ev.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}.</div>` : ''}
     <div class="grid" id="grid"></div>`;
@@ -177,17 +177,17 @@ $('f').addEventListener('submit', async (x) => {
 Promise.all([fetch('/api/event').then((r) => r.json()), fetch('/api/photos' + (A && !CLAIM ? '?athlete=' + A : '')).then((r) => r.json()), A && !CLAIM ? fetch('/api/photos').then((r) => r.json()) : Promise.resolve(null), CLAIM ? fetch('/api/pedido/' + encodeURIComponent(CLAIM)).then((r) => r.json()) : Promise.resolve(null)]).then(([e, p, all, ped]) => {
   ev = e; ids = p.photos; claimMax = e.claimMax || 0; sel = new Set(CLAIM ? ((ped && ped.claimed) || []).filter((id) => ids.includes(id)) : load().filter((id) => ids.includes(id)));
   document.title = 'Fotos: ' + e.eventName;
-  if (e.salesClosed && !CLAIM) { $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Vendas <em>encerradas</em></h1><p class="lead">O prazo para comprar fotos terminou. Se você já comprou, acesse as suas fotos pelo botão abaixo.</p><a class="btn go full" style="width:100%" href="acesso.html">Já comprei, acessar minhas fotos</a>`; return; }
+  if (e.salesClosed && !CLAIM) { $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>${tTitle(e.texts.txt_closed_title)}</h1><p class="lead">${tLead(e.texts.txt_closed_lead)}</p><a class="btn go full" style="width:100%" href="acesso.html">Já comprei, acessar minhas fotos</a>`; return; }
   if (!ids.length && A && all && all.photos.length) {
     const ath = e.athletes.find((a) => a.id === A); const first = ath ? ath.name.split(' ')[0] : '';
     $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Fotos de <em>${esc(first)}</em></h1>
       <p class="lead">Ainda não separamos as fotos por atleta. Você tem duas opções:</p>
       <div class="card"><h2>Pacote completo: ${reais(e.allPrice)}</h2><p class="muted" style="font-size:14px">Você paga e marca no site as fotos em que aparece, sem marca d'água.</p><button class="go full" id="buyall">Quero o pacote completo</button></div>
-      <div class="card" style="background:var(--card2);border:0"><h2>Fotos avulsas</h2><p class="muted" style="font-size:14px">1 foto ${reais(e.prices.one)} · 4 fotos ${reais(e.prices.four)}. Veja todas as fotos e escolha as suas.</p><a class="btn light full" style="width:100%" href="galeria.html">Ver todas as fotos</a></div>`;
+      <div class="card" style="background:var(--card2);border:0"><h2>Fotos avulsas</h2><p class="muted" style="font-size:14px">${(e.tiers || []).map((t) => t.n + ' foto' + (t.n > 1 ? 's' : '') + ' ' + reais(t.cents)).join(' · ')}. Veja todas as fotos e escolha as suas.</p><a class="btn light full" style="width:100%" href="galeria.html">Ver todas as fotos</a></div>`;
     $('buyall').onclick = () => openSheet('all');
     return;
   }
   if (!ids.length) { $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Em <em>breve</em></h1><p class="lead">As fotos ainda não foram publicadas. Volte em breve, elas aparecem aqui assim que estiverem prontas.</p>`; return; }
   header(); requote();
 }).catch(() => { $('root').innerHTML = '<p class="err" style="margin-top:40px">Não consegui carregar. Recarregue a página.</p>'; });
-</script><script src="pin.js"></script></body></html>
+</script><script src="pin.js"></script><script src="txt.js"></script></body></html>

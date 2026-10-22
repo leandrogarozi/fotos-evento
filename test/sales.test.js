@@ -37,3 +37,40 @@ test('vendas encerradas bloqueiam compra, mas quem já comprou continua entrando
   assert.equal((await checkout.onRequestPost({ request: req({ ...body, all: true }), env })).status, 410);
   assert.equal((await acesso.onRequestPost({ request: req({ whatsapp: '27999991234', pin: '4321' }), env })).status, 200, 'quem comprou continua acessando');
 });
+
+test('textos das páginas: padrão, edição pelo painel e volta ao padrão se ficar vazio', async () => {
+  const { DEFAULTS } = await import('../functions/_lib/pricing.js');
+  const aConfig = await import('../functions/api/admin/config.js');
+  const login = await import('../functions/api/admin/login.js');
+  const env = { DB: makeDB(), FOTOS: makeR2(), ADMIN_PASSWORD: 'x' };
+  const p = (path, b, h = {}) => new Request('https://f.test' + path, { method: 'POST', headers: { 'content-type': 'application/json', ...h }, body: JSON.stringify(b) });
+  let ev = await (await event.onRequestGet({ env })).json();
+  assert.equal(ev.texts.txt_presale_title, DEFAULTS.txt_presale_title);
+  const { token } = await (await login.onRequestPost({ request: p('/l', { password: 'x' }), env })).json();
+  const H = { authorization: 'Bearer ' + token };
+  await aConfig.onRequestPost({ request: p('/c', { event_name: 'Vida Ativa', txt_presale_title: 'Garanta *suas fotos* do Vida Ativa', txt_store_lead: '' }, H), env });
+  ev = await (await event.onRequestGet({ env })).json();
+  assert.equal(ev.eventName, 'Vida Ativa');
+  assert.equal(ev.texts.txt_presale_title, 'Garanta *suas fotos* do Vida Ativa');
+  assert.equal(ev.texts.txt_store_lead, DEFAULTS.txt_store_lead, 'vazio volta ao padrão');
+  const cfg = await (await aConfig.onRequestGet({ request: new Request('https://f.test/c', { headers: H }), env })).json();
+  assert.ok('txt_claim_lead' in cfg);
+});
+
+test('painel salva pacotes personalizados e o site passa a usá-los; recusa pacotes inválidos', async () => {
+  const aConfig = await import('../functions/api/admin/config.js');
+  const login = await import('../functions/api/admin/login.js');
+  const quote = await import('../functions/api/quote.js');
+  const env = { DB: makeDB(), FOTOS: makeR2(), ADMIN_PASSWORD: 'x' };
+  const p = (path, b, h = {}) => new Request('https://f.test' + path, { method: 'POST', headers: { 'content-type': 'application/json', ...h }, body: JSON.stringify(b) });
+  const { token } = await (await login.onRequestPost({ request: p('/l', { password: 'x' }), env })).json();
+  const H = { authorization: 'Bearer ' + token };
+  assert.equal((await aConfig.onRequestPost({ request: p('/c', { price_tiers: JSON.stringify([{ n: 0, cents: 5 }]) }, H), env })).status, 400);
+  const ok = await aConfig.onRequestPost({ request: p('/c', { price_tiers: JSON.stringify([{ n: 1, cents: 1500 }, { n: 2, cents: 3000 }, { n: 3, cents: 4000 }]) }, H), env });
+  assert.equal(ok.status, 200); assert.equal((await ok.json()).tiers.length, 3);
+  const ev = await (await event.onRequestGet({ env })).json();
+  assert.deepEqual(ev.tiers.map((t) => t.n), [1, 2, 3]);
+  await env.DB.prepare("INSERT INTO config (key, value) VALUES ('presale_end', '2020-01-01T00:00:00Z')").run();
+  const q = await (await quote.onRequestGet({ request: new Request('https://f.test/q?n=2'), env })).json();
+  assert.equal(q.total, 3000);
+});
