@@ -16,11 +16,13 @@ export const DEFAULTS = {
   published_at: '',
   late_after_days: 5,
   price_box_cents: 0,
+  // Máx. de fotos que quem comprou o pacote completo pode marcar como suas na galeria geral.
+  claim_max: 80,
 };
 
 export const NUMERIC_KEYS = [
   'presale_price_cents', 'price_one_cents', 'price_four_cents',
-  'price_all_event_cents', 'price_all_late_cents', 'late_after_days', 'price_box_cents',
+  'price_all_event_cents', 'price_all_late_cents', 'late_after_days', 'price_box_cents', 'claim_max',
 ];
 
 export function mergeConfig(rows) {

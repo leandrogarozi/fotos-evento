@@ -14,6 +14,7 @@ import * as aPhotos from '../functions/api/admin/photos.js';
 import * as aPhoto from '../functions/api/admin/photo.js';
 import * as aPhotoDel from '../functions/api/admin/photo/[id].js';
 import * as aPhotoPut from '../functions/api/admin/photo/[id]/[kind].js';
+import * as claim from '../functions/api/claim.js';
 import * as dl from '../functions/api/dl/[id].js';
 import * as img from '../functions/img/[id].js';
 
@@ -165,4 +166,35 @@ test('fotos gerais (sem atleta): aparecem só na galeria geral e se apagam norma
   assert.equal((await aPhoto.onRequestPost({ request: post('/p', { filename: 'x.jpg', athleteIds: [] }, H), env })).status, 400, 'sem atleta e sem marcar geral continua barrado');
   await aPhotoDel.onRequestDelete({ params: { id: g }, request: req('/d', { method: 'DELETE', headers: H }), env });
   assert.equal((await (await photosApi.onRequestGet({ request: req('/api/photos?geral=1'), env })).json()).photos.length, 0);
+});
+
+test('marcar as próprias fotos (pacote completo sem atleta nas fotos): baixa só as marcadas, respeita o limite', async () => {
+  const g = [await upload('g1.jpg', [], 'ORIG-G1'), await upload('g2.jpg', [], 'ORIG-G2'), await upload('g3.jpg', [], 'ORIG-G3')];
+  const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 3, all: true, name: 'Vanessa', pin: '1234', email: 'v@b.com', whatsapp: '27955554444' }), env })).json();
+  const claimReq = (token, photoIds) => claim.onRequestPost({ request: post('/api/claim', { token, photoIds }), env });
+  assert.equal((await claimReq(c.token, [g[0]])).status, 403, 'sem pagar não marca');
+  await pay(6000);
+  let p = await orderOf(c.token);
+  assert.equal(p.photos.length, 0); assert.ok(p.galleryCount >= 3); assert.deepEqual(p.claimed, []);
+  assert.equal((await claimReq(c.token, [g[0], g[1]])).status, 200);
+  p = await orderOf(c.token);
+  assert.deepEqual(p.photos.map((x) => x.id).sort(), [g[0], g[1]].sort()); assert.equal(p.claimed.length, 2);
+  assert.equal(await (await dl.onRequestGet({ params: { id: g[0] }, request: req(p.photos.find((x) => x.id === g[0]).url), env })).text(), 'ORIG-G1');
+  const url3 = p.photos[0].url.replace(/\/dl\/[^?]+/, '/dl/' + g[2]);
+  assert.equal((await dl.onRequestGet({ params: { id: g[2] }, request: req(url3), env })).status, 403, 'não marcou, não baixa');
+  assert.equal((await claimReq(c.token, [g[2]])).status, 200, 'nova marcação substitui a anterior');
+  assert.deepEqual((await orderOf(c.token)).photos.map((x) => x.id), [g[2]]);
+  await env.DB.prepare("INSERT INTO config (key, value) VALUES ('claim_max', '1')").run();
+  assert.equal((await claimReq(c.token, [g[0], g[1]])).status, 400, 'passou do limite');
+  assert.equal((await claimReq(c.token, ['inexistente'])).status, 400);
+  assert.equal((await claimReq(c.token, [])).status, 200, 'limpar a seleção');
+  await env.DB.prepare("DELETE FROM config WHERE key = 'claim_max'").run();
+});
+
+test('pedido de fotos avulsas não usa a marcação', async () => {
+  const a = await upload('av.jpg', [], 'ORIG-AV');
+  const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { photoIds: [a], name: 'Rui', pin: '1234', email: 'r@b.com', whatsapp: '27944443333' }), env })).json();
+  await pay(1500);
+  assert.equal((await claim.onRequestPost({ request: post('/api/claim', { token: c.token, photoIds: [a] }), env })).status, 403);
+  assert.equal((await orderOf(c.token)).photos.length, 1);
 });

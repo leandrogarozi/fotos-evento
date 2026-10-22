@@ -65,12 +65,15 @@ const $ = (id) => document.getElementById(id);
 const reais = (c) => 'R$ ' + (c / 100).toFixed(2).replace('.', ',').replace(',00', '');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = (iso) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).replace(',', ' às');
-const A = Number(new URLSearchParams(location.search).get('a')) || 0;
+const Q = new URLSearchParams(location.search);
+const A = Number(Q.get('a')) || 0;
+const CLAIM = Q.get('claim') || '';
 const KEY = 'sel:' + A;
+let claimMax = 80;
 let ev, ids = [], sel = new Set(), quote = null, idx = 0, mode = 'cart', qt;
 
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...sel])); } catch (_) {} };
-const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (_) { return []; } };
+const save = () => { if (CLAIM) return; try { localStorage.setItem(KEY, JSON.stringify([...sel])); } catch (_) {} };
+const load = () => { if (CLAIM) return []; try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (_) { return []; } };
 
 function header() {
   const ath = ev.athletes.find((a) => a.id === A);
@@ -78,9 +81,9 @@ function header() {
   const dl = ev.deadline;
   $('root').innerHTML = `
     <div class="eyebrow">${esc(ev.eventName)}</div>
-    <h1>${ath ? `Fotos de <em>${esc(first)}</em>` : 'Todas as <em>fotos</em>'}</h1>
-    <p class="lead">${ath ? `Você aparece em <b>${ids.length}</b> foto${ids.length === 1 ? '' : 's'}. ` : ''}Toque na foto para ampliar e no coração para escolher.</p>
-    ${ath && dl.until ? `<div class="box sage" style="max-width:560px">Pacote completo por ${reais(ev.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}.</div>` : ''}
+    <h1>${CLAIM ? 'Encontre <em>suas fotos</em>' : ath ? `Fotos de <em>${esc(first)}</em>` : 'Todas as <em>fotos</em>'}</h1>
+    <p class="lead">${CLAIM ? `Toque no coração das fotos em que <b>você aparece</b>. Você pode marcar até <b>${claimMax}</b>. Depois toque em <b>Salvar minhas fotos</b>. ` : ''}${CLAIM ? '' : ath ? `Você aparece em <b>${ids.length}</b> foto${ids.length === 1 ? '' : 's'}. ` : ''}${CLAIM ? '' : 'Toque na foto para ampliar e no coração para escolher.'}</p>
+    ${!CLAIM && ath && dl.until ? `<div class="box sage" style="max-width:560px">Pacote completo por ${reais(ev.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}.</div>` : ''}
     <div class="grid" id="grid"></div>`;
   $('grid').innerHTML = ids.map((id) => `<div class="ph" data-id="${id}"><img src="/img/${id}" loading="lazy" alt="" draggable="false"><button class="heart" aria-label="Escolher foto">♡</button></div>`).join('');
   $('grid').querySelectorAll('.ph').forEach((el) => {
@@ -99,6 +102,13 @@ function toggle(id) { sel.has(id) ? sel.delete(id) : sel.add(id); save(); paint(
 
 function requote() {
   clearTimeout(qt); qt = setTimeout(async () => {
+    if (CLAIM) {
+      const n = sel.size; $('bar').style.display = ids.length ? '' : 'none';
+      $('cnt').textContent = `${n} de ${claimMax} marcadas`; $('total').textContent = '';
+      $('fin').textContent = 'Salvar minhas fotos'; $('fin').disabled = n > claimMax;
+      $('msg').innerHTML = n > claimMax ? `<div class="msg">Você passou do limite de ${claimMax} fotos. Desmarque algumas.</div>` : '';
+      return;
+    }
     const n = sel.size;
     $('bar').style.display = ids.length ? '' : 'none';
     $('cnt').textContent = n ? `${n} foto${n > 1 ? 's' : ''}` : 'Nenhuma foto escolhida';
@@ -140,7 +150,15 @@ function openSheet(m) {
   else { $('sh-title').textContent = 'Quase lá'; $('sh-sub').textContent = quote ? (quote.kind === 'all' ? `Pacote completo: ${reais(quote.total)}.` : `${sel.size} foto${sel.size > 1 ? 's' : ''}: ${reais(quote.total)}.`) : ''; }
   $('err').textContent = ''; $('sheet').classList.add('open');
 }
-$('fin').onclick = () => openSheet('cart');
+$('fin').onclick = async () => {
+  if (!CLAIM) return openSheet('cart');
+  $('fin').disabled = true;
+  try {
+    const r = await fetch('/api/claim', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token: CLAIM, photoIds: [...sel] }) });
+    const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Erro');
+    location.href = 'pedido.html?t=' + encodeURIComponent(CLAIM);
+  } catch (e) { alert(e.message); $('fin').disabled = false; }
+};
 $('back').onclick = () => $('sheet').classList.remove('open');
 $('f').addEventListener('submit', async (x) => {
   x.preventDefault(); $('err').textContent = ''; $('pay').disabled = true;
@@ -155,9 +173,18 @@ $('f').addEventListener('submit', async (x) => {
   } catch (e) { $('err').textContent = e.message; $('pay').disabled = false; }
 });
 
-Promise.all([fetch('/api/event').then((r) => r.json()), fetch('/api/photos' + (A ? '?athlete=' + A : '')).then((r) => r.json())]).then(([e, p]) => {
-  ev = e; ids = p.photos; sel = new Set(load().filter((id) => ids.includes(id)));
+Promise.all([fetch('/api/event').then((r) => r.json()), fetch('/api/photos' + (A && !CLAIM ? '?athlete=' + A : '')).then((r) => r.json()), A && !CLAIM ? fetch('/api/photos').then((r) => r.json()) : Promise.resolve(null), CLAIM ? fetch('/api/pedido/' + encodeURIComponent(CLAIM)).then((r) => r.json()) : Promise.resolve(null)]).then(([e, p, all, ped]) => {
+  ev = e; ids = p.photos; claimMax = e.claimMax || 80; sel = new Set(CLAIM ? ((ped && ped.claimed) || []).filter((id) => ids.includes(id)) : load().filter((id) => ids.includes(id)));
   document.title = 'Fotos: ' + e.eventName;
+  if (!ids.length && A && all && all.photos.length) {
+    const ath = e.athletes.find((a) => a.id === A); const first = ath ? ath.name.split(' ')[0] : '';
+    $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Fotos de <em>${esc(first)}</em></h1>
+      <p class="lead">Ainda não separamos as fotos por atleta. Você tem duas opções:</p>
+      <div class="card"><h2>Pacote completo: ${reais(e.allPrice)}</h2><p class="muted" style="font-size:14px">Você paga e marca no site as fotos em que aparece (até ${claimMax}), sem marca d'água.</p><button class="go full" id="buyall">Quero o pacote completo</button></div>
+      <div class="card" style="background:var(--card2);border:0"><h2>Fotos avulsas</h2><p class="muted" style="font-size:14px">1 foto ${reais(e.prices.one)} · 4 fotos ${reais(e.prices.four)}. Veja todas as fotos e escolha as suas.</p><a class="btn light full" style="width:100%" href="galeria.html">Ver todas as fotos</a></div>`;
+    $('buyall').onclick = () => openSheet('all');
+    return;
+  }
   if (!ids.length) { $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Em <em>breve</em></h1><p class="lead">As fotos ainda não foram publicadas. Volte em breve, elas aparecem aqui assim que estiverem prontas.</p>`; return; }
   header(); requote();
 }).catch(() => { $('root').innerHTML = '<p class="err" style="margin-top:40px">Não consegui carregar. Recarregue a página.</p>'; });

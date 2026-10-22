@@ -9,11 +9,13 @@ const READY = 'p.has_orig = 1 AND p.has_prev = 1';
 export async function orderPhotos(env, order) {
   if (!PAID.includes(order.status)) return [];
   const q = order.kind === 'todas'
-    ? [`SELECT DISTINCT p.id, p.filename FROM photos p JOIN photo_athletes pa ON pa.photo_id = p.id
-        WHERE pa.athlete_id = ? AND ${READY} ORDER BY p.filename`, order.athlete_id]
+    ? [`SELECT p.id, p.filename FROM photos p WHERE ${READY} AND (
+          EXISTS (SELECT 1 FROM photo_athletes pa WHERE pa.photo_id = p.id AND pa.athlete_id = ?)
+          OR EXISTS (SELECT 1 FROM order_photos op WHERE op.photo_id = p.id AND op.order_id = ?))
+        ORDER BY p.filename`, [order.athlete_id, order.id]]
     : [`SELECT p.id, p.filename FROM photos p JOIN order_photos op ON op.photo_id = p.id
-        WHERE op.order_id = ? AND ${READY} ORDER BY p.filename`, order.id];
-  const { results } = await env.DB.prepare(q[0]).bind(q[1]).all();
+        WHERE op.order_id = ? AND ${READY} ORDER BY p.filename`, [order.id]];
+  const { results } = await env.DB.prepare(q[0]).bind(...q[1]).all();
   return results;
 }
 

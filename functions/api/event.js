@@ -14,6 +14,7 @@ export async function onRequestGet({ env }) {
     eventDate: cfg.event_date,
     whatsapp: cfg.whatsapp,
     brandText: cfg.brand_text,
+    claimMax: Math.min(90, Number(cfg.claim_max) || 80),
     prices: { one: cfg.price_one_cents, four: cfg.price_four_cents },
     presale: isPresale(cfg, now),
     presaleEnd: cfg.presale_end,
