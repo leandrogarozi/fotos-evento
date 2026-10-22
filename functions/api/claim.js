@@ -12,7 +12,7 @@ export async function onRequestPost({ request, env }) {
   if (!order || !PAID.includes(order.status)) return bad('Pedido não encontrado ou ainda não pago.', 403);
   if (order.kind !== 'todas') return bad('Este pedido não permite marcar fotos.', 403);
   const cfg = await getConfig(env);
-  const max = Math.min(HARD_MAX, Math.max(1, Number(cfg.claim_max) || 80));
+  const max = Math.min(HARD_MAX, Math.max(1, Number(cfg.claim_max) || 40));
   const ids = [...new Set((b.photoIds || []).map(String))];
   if (ids.length > max) return bad(`Você pode marcar até ${max} fotos. Se precisar de mais, fale comigo no WhatsApp.`);
   if (ids.length) {

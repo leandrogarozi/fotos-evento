@@ -69,7 +69,7 @@ const Q = new URLSearchParams(location.search);
 const A = Number(Q.get('a')) || 0;
 const CLAIM = Q.get('claim') || '';
 const KEY = 'sel:' + A;
-let claimMax = 80;
+let claimMax = 40;
 let ev, ids = [], sel = new Set(), quote = null, idx = 0, mode = 'cart', qt;
 
 const save = () => { if (CLAIM) return; try { localStorage.setItem(KEY, JSON.stringify([...sel])); } catch (_) {} };
@@ -174,7 +174,7 @@ $('f').addEventListener('submit', async (x) => {
 });
 
 Promise.all([fetch('/api/event').then((r) => r.json()), fetch('/api/photos' + (A && !CLAIM ? '?athlete=' + A : '')).then((r) => r.json()), A && !CLAIM ? fetch('/api/photos').then((r) => r.json()) : Promise.resolve(null), CLAIM ? fetch('/api/pedido/' + encodeURIComponent(CLAIM)).then((r) => r.json()) : Promise.resolve(null)]).then(([e, p, all, ped]) => {
-  ev = e; ids = p.photos; claimMax = e.claimMax || 80; sel = new Set(CLAIM ? ((ped && ped.claimed) || []).filter((id) => ids.includes(id)) : load().filter((id) => ids.includes(id)));
+  ev = e; ids = p.photos; claimMax = e.claimMax || 40; sel = new Set(CLAIM ? ((ped && ped.claimed) || []).filter((id) => ids.includes(id)) : load().filter((id) => ids.includes(id)));
   document.title = 'Fotos: ' + e.eventName;
   if (!ids.length && A && all && all.photos.length) {
     const ath = e.athletes.find((a) => a.id === A); const first = ath ? ath.name.split(' ')[0] : '';

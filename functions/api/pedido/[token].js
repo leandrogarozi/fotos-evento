@@ -15,7 +15,7 @@ export async function onRequestGet({ params, request, env }) {
     galleryCount = (await env.DB.prepare('SELECT COUNT(*) AS n FROM photos WHERE has_orig = 1 AND has_prev = 1').first()).n;
   }
   return json({
-    claimed, galleryCount, claimMax: Math.min(90, Number((await getConfig(env)).claim_max) || 80),
+    claimed, galleryCount, claimMax: Math.min(90, Number((await getConfig(env)).claim_max) || 40),
     status: order.status,
     kind: order.kind,
     athlete: order.athlete_name,
