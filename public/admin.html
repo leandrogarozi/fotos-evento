@@ -165,6 +165,8 @@ async function sendOne(file, athleteIds, geral) {
 }
 async function startUpload() {
   const checked = [...document.querySelectorAll('.pa:checked')].map(i => Number(i.value));
+  if ($('files').files.length && !checked.length && !$('geral').checked &&
+      confirm('Você não marcou nenhum atleta.\n\nEnviar essas ' + $('files').files.length + ' foto(s) como FOTOS GERAIS (sem atleta)?\n\nOK = enviar como gerais\nCancelar = voltar e marcar o atleta')) $('geral').checked = true;
   const jobs = [], skipped = [];
   [...$('files').files].forEach(f => (checked.length || $('geral').checked) ? jobs.push({ f, ids: checked, geral: !checked.length }) : skipped.push(f.name + ' (marque um atleta ou "fotos gerais")'));
   [...$('folder').files].filter(f => /image\/jpeg/.test(f.type)).forEach(f => {
