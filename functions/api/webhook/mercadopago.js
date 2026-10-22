@@ -1,6 +1,7 @@
 import { json, readJson } from '../../_lib/util.js';
 import { getPayment, paymentCountsFor, verifySignature } from '../../_lib/mp.js';
-import { getOrder, markPaid } from '../../_lib/db.js';
+import { getOrder } from '../../_lib/db.js';
+import { markPaid } from '../../_lib/paid.js';
 
 // O Mercado Pago só avisa "tem novidade no pagamento X". Quem decide é a API dele:
 // consultamos o pagamento com nosso token e só liberamos se estiver approved.
@@ -18,6 +19,6 @@ export async function onRequestPost({ request, env }) {
   const payment = await getPayment(env, dataId);
   if (!payment || !payment.external_reference) return json({ ok: true });
   const order = await getOrder(env, 'o.id', payment.external_reference);
-  if (order && paymentCountsFor(payment, order)) await markPaid(env, order.id, payment.id);
+  if (order && paymentCountsFor(payment, order)) await markPaid(env, order.id, payment.id, url.origin);
   return json({ ok: true });
 }

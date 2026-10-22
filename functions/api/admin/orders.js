@@ -1,6 +1,8 @@
 import { json, bad, readJson } from '../../_lib/util.js';
 import { isAdmin, denied } from '../../_lib/auth.js';
 import { syncOrder } from '../../_lib/sync.js';
+import { notifyPaid } from '../../_lib/paid.js';
+import { sendAccessEmail } from '../../_lib/mail.js';
 import { getOrder } from '../../_lib/db.js';
 import { normWpp, validPin, newPin } from '../../_lib/pin.js';
 
@@ -25,20 +27,22 @@ export async function onRequestPost({ request, env }) {
   const order = await getOrder(env, 'o.id', id);
   if (!order) return bad('Pedido não encontrado.', 404);
   if (action === 'verificar') {
-    const o = await syncOrder(env, order);
+    const o = await syncOrder(env, order, new URL(request.url).origin);
     return json({ status: o.status });
   }
   if (action === 'liberar') {
     await env.DB.prepare(
       `UPDATE orders SET status = 'pago', manual = 1, paid_at = COALESCE(paid_at, ?) WHERE id = ?`
     ).bind(new Date().toISOString(), id).run();
+    if (order.status === 'aguardando') await notifyPaid(env, id, new URL(request.url).origin);
     return json({ status: 'pago' });
   }
   if (action === 'senha') {
     if (!validPin(pin)) return bad('A senha tem de 4 a 6 números.');
     const w = normWpp(order.whatsapp), p = await newPin(pin, w);
-    await env.DB.prepare('UPDATE orders SET whatsapp = ?, pin_salt = ?, pin_hash = ? WHERE id = ?').bind(w, p.salt, p.hash, id).run();
-    return json({ ok: true });
+    await env.DB.prepare("UPDATE orders SET whatsapp = ?, pin_salt = ?, pin_hash = ?, pin_enc = '' WHERE id = ?").bind(w, p.salt, p.hash, id).run();
+    const emailed = ['pago', 'liberado'].includes(order.status) && await sendAccessEmail(env, { order: { ...order, whatsapp: w }, pin, origin: new URL(request.url).origin });
+    return json({ ok: true, emailed });
   }
   return bad('Ação inválida.');
 }

@@ -11,10 +11,3 @@ export async function getOrder(env, where, value) {
      LEFT JOIN athletes a ON a.id = o.athlete_id WHERE ${where} = ?`
   ).bind(value).first();
 }
-
-export async function markPaid(env, orderId, paymentId) {
-  await env.DB.prepare(
-    `UPDATE orders SET status = 'pago', mp_payment_id = ?, paid_at = COALESCE(paid_at, ?)
-     WHERE id = ? AND status = 'aguardando'`
-  ).bind(String(paymentId), new Date().toISOString(), orderId).run();
-}

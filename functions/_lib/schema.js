@@ -7,7 +7,7 @@ const DDL = [
   `CREATE TABLE IF NOT EXISTS order_photos (order_id TEXT NOT NULL REFERENCES orders(id), photo_id TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE, PRIMARY KEY (order_id, photo_id))`,
   `CREATE TABLE IF NOT EXISTS access_attempts (wpp TEXT PRIMARY KEY, fails INTEGER NOT NULL DEFAULT 0, locked_until TEXT)`,
 ];
-const ORDER_COLUMNS = [['pin_salt', "TEXT NOT NULL DEFAULT ''"], ['pin_hash', "TEXT NOT NULL DEFAULT ''"]];
+const ORDER_COLUMNS = [['pin_salt', "TEXT NOT NULL DEFAULT ''"], ['pin_hash', "TEXT NOT NULL DEFAULT ''"], ['pin_enc', "TEXT NOT NULL DEFAULT ''"]];
 
 let ready = null;
 export function ensureSchema(env) {

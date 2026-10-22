@@ -35,7 +35,7 @@ test('esquema se completa sozinho num banco só com 0001 e 0002', async () => {
 });
 
 test('compra exige senha de 4 a 6 números', async () => {
-  const r = (pin) => presale.onRequestPost({ request: post('/p', { athleteId: 1, name: 'Maria', whatsapp: '(27) 99999-1234', pin }), env });
+  const r = (pin) => presale.onRequestPost({ request: post('/p', { athleteId: 1, name: 'Maria', whatsapp: '(27) 99999-1234', email: 'm@b.com', pin }), env });
   for (const bad of [undefined, '12', 'abcd', '1234567']) assert.equal((await r(bad)).status, 400);
   const ok = await r('4321'); assert.equal(ok.status, 200);
   tok = (await ok.json()).token;

@@ -46,9 +46,9 @@ test('lista de atletas: 38, agrupados por turma, sem a Luana duplicada', async (
 
 let tokenPedido, orderId;
 test('pré-venda cria pedido e preferência com external_reference e valor do servidor', async () => {
-  const bad = await presale.onRequestPost({ request: post('/api/presale', { athleteId: 1, name: 'A', pin: '1234', whatsapp: '1' }), env });
+  const bad = await presale.onRequestPost({ request: post('/api/presale', { athleteId: 1, name: 'A', pin: '1234', email: 'a@b.com', whatsapp: '1' }), env });
   assert.equal(bad.status, 400);
-  const res = await presale.onRequestPost({ request: post('/api/presale', { athleteId: 1, name: 'Maria Silva', pin: '1234', whatsapp: '(27) 99999-1234', amount_cents: 1 }), env });
+  const res = await presale.onRequestPost({ request: post('/api/presale', { athleteId: 1, name: 'Maria Silva', pin: '1234', email: 'a@b.com', whatsapp: '(27) 99999-1234', amount_cents: 1 }), env });
   const d = await res.json();
   assert.equal(res.status, 200);
   assert.match(d.url, /^https:\/\/mp\.test\/pay\//);
@@ -77,7 +77,7 @@ test('webhook só libera com pagamento approved e valor certo', async () => {
 });
 
 test('sem webhook, ?sync=1 acha o pagamento pelo external_reference', async () => {
-  const r = await (await presale.onRequestPost({ request: post('/api/presale', { athleteId: 2, name: 'João', pin: '1234', whatsapp: '27988887777' }), env })).json();
+  const r = await (await presale.onRequestPost({ request: post('/api/presale', { athleteId: 2, name: 'João', pin: '1234', email: 'a@b.com', whatsapp: '27988887777' }), env })).json();
   const id = payments._pref.external_reference;
   payments['200'] = { id: 200, status: 'approved', transaction_amount: 50, external_reference: id };
   const p = await (await pedido.onRequestGet({ params: { token: r.token }, request: req('/x?sync=1'), env })).json();
@@ -94,7 +94,7 @@ test('painel: senha, lista, total, liberar manual, config e atletas', async () =
   assert.equal(d.orders.length, 2);
   assert.equal(d.totalCents, 10000);
 
-  const r = await (await presale.onRequestPost({ request: post('/api/presale', { athleteId: 3, name: 'Ana', pin: '1234', whatsapp: '27977776666' }), env })).json();
+  const r = await (await presale.onRequestPost({ request: post('/api/presale', { athleteId: 3, name: 'Ana', pin: '1234', email: 'a@b.com', whatsapp: '27977776666' }), env })).json();
   d = await (await aOrders.onRequestGet({ request: req('/o', { headers: H }), env })).json();
   const pend = d.orders.find((o) => o.status === 'aguardando');
   await aOrders.onRequestPost({ request: post('/o', { id: pend.id, action: 'liberar' }, H), env });
@@ -103,7 +103,7 @@ test('painel: senha, lista, total, liberar manual, config e atletas', async () =
 
   const c = await (await aConfig.onRequestPost({ request: post('/c', { presale_price_cents: '100', hack: 'x' }, H), env })).json();
   assert.equal(c.presale_price_cents, 100);
-  await presale.onRequestPost({ request: post('/api/presale', { athleteId: 4, name: 'Teste', pin: '1234', whatsapp: '27966665555' }), env });
+  await presale.onRequestPost({ request: post('/api/presale', { athleteId: 4, name: 'Teste', pin: '1234', email: 'a@b.com', whatsapp: '27966665555' }), env });
   assert.equal(payments._pref.items[0].unit_price, 1);
 
   await aAth.onRequestPost({ request: post('/a', { action: 'toggle', id: 38, active: false }, H), env });

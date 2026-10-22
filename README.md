@@ -43,3 +43,14 @@ Código na branch `loja`. Antes de juntar na `main`:
 Fluxo: painel → aba **Fotos** → marque os atletas → envie os JPGs (ou uma pasta por atleta). A vitrine (1200 px, ~70%, marca d'água) é gerada no navegador; a original sobe privada pro R2 e só sai por link assinado de pedido pago (7 dias). Quem comprou o pacote "todas" na pré-venda recebe as fotos assim que elas sobem.
 
 Limites do plano grátis: o ZIP é montado no celular/computador do comprador (sem custo de servidor); em pacotes muito grandes no 4G, o download foto a foto é mais seguro.
+
+## E-mail com senha e link (confirmação de pagamento)
+
+Quando o Mercado Pago confirma, o comprador recebe um e-mail com WhatsApp, senha e o link do site. O envio usa o seu Gmail, por um script (`docs/enviar-email.gs`).
+
+1. **script.google.com** → Novo projeto → cole `docs/enviar-email.gs`, troque `SEGREDO` por uma frase sua.
+2. **Implantar → Nova implantação → App da Web** → Executar como: *Eu* · Acesso: *Qualquer pessoa* → autorize → copie o endereço (`.../exec`).
+3. **Cloudflare → fotos-evento → Configurações → Variáveis e Segredos** (tipo *Secret*): `MAIL_WEBHOOK_URL` = o endereço copiado; `MAIL_WEBHOOK_SECRET` = a frase do passo 1.
+4. **Implantações** → Retry na linha mais recente.
+
+Sem essas variáveis o site funciona normal, só não envia e-mail. A senha fica criptografada no banco só até o e-mail sair; depois é apagada.

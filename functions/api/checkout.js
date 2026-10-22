@@ -1,5 +1,6 @@
 import { json, bad, readJson, uid, token } from '../_lib/util.js';
 import { normWpp, validPin, newPin } from '../_lib/pin.js';
+import { encryptPin } from '../_lib/secret.js';
 import { getConfig } from '../_lib/db.js';
 import { isPresale, allPrice, cartPrice, reais } from '../_lib/pricing.js';
 import { createPreference } from '../_lib/mp.js';
@@ -15,7 +16,7 @@ export async function onRequestPost({ request, env }) {
   const email = String(b.email || '').trim().slice(0, 160);
   if (name.length < 2) return bad('Informe seu nome.');
   if (whatsapp.length < 10 || whatsapp.length > 13) return bad('Informe um WhatsApp válido com DDD.');
-  if (email && !/^\S+@\S+\.\S+$/.test(email)) return bad('E-mail inválido.');
+  if (!/^\S+@\S+\.\S+$/.test(email)) return bad('Informe um e-mail válido: é para ele que enviamos sua senha e o link.');
   if (!validPin(b.pin)) return bad('Crie uma senha de 4 a 6 números.');
 
   const cfg = await getConfig(env);
@@ -48,9 +49,9 @@ export async function onRequestPost({ request, env }) {
   const order = { id: uid(), token: token(), created_at: new Date().toISOString() };
   const pin = await newPin(b.pin, whatsapp);
   const stmts = [env.DB.prepare(
-    `INSERT INTO orders (id, token, athlete_id, buyer_name, whatsapp, email, kind, amount_cents, status, created_at, presale, pin_salt, pin_hash)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'aguardando', ?, 0, ?, ?)`
-  ).bind(order.id, order.token, athlete ? athlete.id : null, name, whatsapp, email, kind, amount, order.created_at, pin.salt, pin.hash)];
+    `INSERT INTO orders (id, token, athlete_id, buyer_name, whatsapp, email, kind, amount_cents, status, created_at, presale, pin_salt, pin_hash, pin_enc)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'aguardando', ?, 0, ?, ?, ?)`
+  ).bind(order.id, order.token, athlete ? athlete.id : null, name, whatsapp, email, kind, amount, order.created_at, pin.salt, pin.hash, await encryptPin(env, b.pin))];
   for (const pid of photoIds) stmts.push(env.DB.prepare('INSERT INTO order_photos (order_id, photo_id) VALUES (?, ?)').bind(order.id, pid));
   await env.DB.batch(stmts);
 
