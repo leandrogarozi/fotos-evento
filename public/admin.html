@@ -7,10 +7,11 @@
 <h1>Painel <em>administrativo</em></h1>
 <div class="card" id="login"><label>Senha</label><input id="pw" type="password"><button class="full" id="ok">Entrar</button><div class="err" id="lerr"></div></div>
 <div id="app" style="display:none">
-  <div class="tabs"><button data-t="orders" class="on">Pedidos</button><button data-t="config">Preços e datas</button><button data-t="photos">Fotos</button><button data-t="athletes">Atletas</button><button data-t="link">Link e QR</button></div>
+  <div class="tabs"><button data-t="orders" class="on">Pedidos</button><button data-t="config">Preços e datas</button><button data-t="photos">Fotos</button><button data-t="triage">Triagem</button><button data-t="athletes">Atletas</button><button data-t="link">Link e QR</button></div>
   <div class="card" id="orders"></div>
   <div class="card" id="config" style="display:none"></div>
   <div class="card" id="photos" style="display:none"></div>
+  <div class="card" id="triage" style="display:none"></div>
   <div class="card" id="athletes" style="display:none"></div>
   <div class="card" id="link" style="display:none"></div>
 </div>
@@ -35,7 +36,8 @@ $('ok').onclick = async () => {
 };
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
   document.querySelectorAll('.tabs button').forEach(x => x.classList.toggle('on', x === b));
-  ['orders', 'config', 'photos', 'athletes', 'link'].forEach(id => $(id).style.display = id === b.dataset.t ? '' : 'none');
+  ['orders', 'config', 'photos', 'triage', 'athletes', 'link'].forEach(id => $(id).style.display = id === b.dataset.t ? '' : 'none');
+  if (b.dataset.t === 'triage') lt();
 });
 async function lo() {
   const d = await api('orders');
@@ -84,7 +86,8 @@ const FIELDS = [
   ['txt_claim_title', 'Marcar minhas fotos: título', 'textline'], ['txt_claim_lead', 'Marcar minhas fotos: texto', 'textarea'],
   ['txt_closed_title', 'Vendas encerradas: título', 'textline'], ['txt_closed_lead', 'Vendas encerradas: texto', 'textarea'],
   ['Marcação de fotos'],
-  ['claim_max', 'Limite de fotos que quem comprou o pacote pode marcar (0 = sem limite)', 'number'],
+  ['claim_enabled', 'Quem comprou o pacote pode marcar fotos suas na galeria geral? (Desligado é mais seguro: o pacote só libera as fotos que você identificou)', 'toggle'],
+  ['claim_max', 'Se ligado: limite de fotos que cada pessoa pode marcar (0 = sem limite)', 'number'],
 ];
 const tierRow = (t) => `<div class="row tier" style="flex-wrap:nowrap;gap:8px;margin-bottom:8px"><input type="number" min="1" max="300" class="tn" value="${t.n}" style="width:90px"><span style="white-space:nowrap;font-size:14px">foto(s) por R$</span><input class="tp" inputmode="decimal" value="${money(t.cents)}" style="width:120px"><button type="button" class="small ghost" onclick="this.parentNode.remove()">Remover</button></div>`;
 function addTier() { $('tiers').insertAdjacentHTML('beforeend', tierRow({ n: '', cents: 0 })); }
@@ -101,6 +104,7 @@ async function lc() {
     if (type === 'datetime') return `<div class="row" style="flex-wrap:nowrap;gap:8px"><input type="datetime-local" step="1" data-k="${k}" data-t="datetime" value="${toLocal(v)}">${f[3] ? `<button type="button" class="small ghost" onclick="const i=this.parentNode.querySelector('input');i.value=toLocal(new Date().toISOString())">Agora</button><button type="button" class="small ghost" onclick="this.parentNode.querySelector('input').value=''">Limpar</button>` : ''}</div>`;
     if (type === 'date') return `<input type="date" data-k="${k}" data-t="date" value="${esc(v)}">`;
     if (type === 'tiers') return `<div id="tiers" data-k="price_tiers" data-t="tiers">${(c.tiers || []).map(tierRow).join('')}</div><button type="button" class="small ghost" style="margin-top:4px" onclick="addTier()">+ Adicionar pacote</button>`;
+    if (type === 'toggle') return `<select data-k="${k}" data-t="number"><option value="0" ${Number(v) ? '' : 'selected'}>Desligado (recomendado)</option><option value="1" ${Number(v) ? 'selected' : ''}>Ligado</option></select>`;
     if (type === 'textarea') return `<textarea data-k="${k}" data-t="text" rows="3">${esc(v)}</textarea>`;
     if (type === 'textline') return `<input data-k="${k}" data-t="text" value="${esc(v)}">`;
     if (type === 'number') return `<input type="number" min="0" data-k="${k}" data-t="number" value="${esc(v)}">`;
@@ -110,7 +114,7 @@ async function lc() {
   const eff = close ? 'Vendas encerram em <b>' + new Date(close).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Sao_Paulo' }) + '</b>' + (close < Date.now() ? ' (já encerradas)' : '') : 'Sem encerramento definido: as vendas ficam abertas.';
   $('config').innerHTML = '<h2>Preços e datas</h2><div class="box sage" style="margin:0 0 6px">' + eff + '</div><div class="grid">' + FIELDS.map(f => f.length === 1
     ? `<h3 style="grid-column:1/-1;font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin:14px 0 0;font-weight:500">${f[0]}</h3>`
-    : `<div${f[2] === 'textarea' || f[2] === 'textline' || f[2] === 'tiers' ? ' style="grid-column:1/-1"' : ''}><label>${f[1]}</label>${input(f)}</div>`).join('') + '</div><button class="full" id="sv">Salvar</button><div class="err" id="cerr"></div>';
+    : `<div${f[2] === 'textarea' || f[2] === 'textline' || f[2] === 'tiers' || f[2] === 'toggle' ? ' style="grid-column:1/-1"' : ''}><label>${f[1]}</label>${input(f)}</div>`).join('') + '</div><button class="full" id="sv">Salvar</button><div class="err" id="cerr"></div>';
   $('sv').onclick = async () => {
     const b = {}; let bad = '';
     document.querySelectorAll('#config [data-k]').forEach(i => {
@@ -155,6 +159,50 @@ function ll() {
       </div>
     </div>`).join('');
 }
+// ---------- Triagem: identificar quem aparece em cada foto (uma por vez)
+let tq = { ids: [], i: 0, chips: [], sticky: false };
+async function lt() {
+  if (!athletesCache.length) { try { await lp(); } catch (_) {} }
+  tq.ids = (await (await fetch('/api/photos?queue=1')).json()).photos; tq.i = 0; tq.chips = []; trender();
+}
+const tqName = (id) => (athletesCache.find(a => a.id === id) || {}).name || '';
+function trender() {
+  const left = tq.ids.length - tq.i;
+  if (!tq.ids.length || tq.i >= tq.ids.length) { $('triage').innerHTML = `<h2>Triagem</h2><p class="muted" style="margin-bottom:12px">${tq.ids.length ? 'Fim da fila. Todas as fotos foram vistas.' : 'Nenhuma foto esperando identificação.'}</p><button class="small" onclick="lt()">Recarregar a fila</button>`; return; }
+  const id = tq.ids[tq.i];
+  $('triage').innerHTML = `<div class="row" style="justify-content:space-between"><h2 style="margin:0">Triagem</h2><span class="muted" style="font-size:13px">${left} foto${left > 1 ? 's' : ''} na fila</span></div>
+    <p class="muted" style="font-size:13px;margin:6px 0 10px">Digite parte do nome e aperte <b>Enter</b> para escolher o atleta. Com o campo vazio, <b>Enter</b> salva e vai para a próxima.</p>
+    <img src="/img/${id}" alt="" style="width:100%;max-height:60vh;object-fit:contain;background:var(--card);border-radius:12px;display:block">
+    <input id="tq-in" autocomplete="off" placeholder="Quem aparece nesta foto? Digite o nome" style="margin-top:12px">
+    <div id="tq-sug" class="row" style="margin-top:8px;gap:6px"></div>
+    <div id="tq-chips" class="row" style="margin-top:8px;gap:6px"></div>
+    <div class="row" style="margin-top:14px">
+      <button id="tq-save">Salvar e próxima</button><button class="ghost" id="tq-skip">Pular</button><button class="ghost" id="tq-geral">Foto geral (torcida, ambiente)</button>
+      <label style="display:flex;gap:8px;align-items:center;margin:0;color:var(--ink)"><input type="checkbox" id="tq-sticky" ${tq.sticky ? 'checked' : ''}> Manter o(s) atleta(s) na próxima foto</label></div>`;
+  tchips(); const inp = $('tq-in'); inp.focus();
+  inp.oninput = () => {
+    const q = norm(inp.value); const sug = q ? athletesCache.filter(a => !tq.chips.includes(a.id) && norm(a.name).includes(q)).slice(0, 8) : [];
+    $('tq-sug').innerHTML = sug.map(a => `<button type="button" class="small light" onclick="tqAdd(${a.id})">${esc(a.name)}</button>`).join('');
+    inp._first = sug[0] && sug[0].id;
+  };
+  inp.onkeydown = (e) => { if (e.key !== 'Enter') return; e.preventDefault(); if (inp.value.trim()) { if (inp._first) tqAdd(inp._first); } else tqSave(); };
+  $('tq-save').onclick = tqSave; $('tq-skip').onclick = () => { tq.i++; trender(); };
+  $('tq-geral').onclick = tqGeral; $('tq-sticky').onchange = (e) => { tq.sticky = e.target.checked; };
+}
+function tchips() { $('tq-chips').innerHTML = tq.chips.map(id => `<span class="pill pago" style="padding:6px 12px;font-size:13px">${esc(tqName(id))} <a href="#" onclick="tqDel(${id});return false" style="margin-left:6px;color:inherit">✕</a></span>`).join(''); }
+function tqAdd(id) { if (!tq.chips.includes(id)) tq.chips.push(id); const inp = $('tq-in'); inp.value = ''; $('tq-sug').innerHTML = ''; tchips(); inp.focus(); }
+function tqDel(id) { tq.chips = tq.chips.filter(x => x !== id); tchips(); }
+async function tqSave() {
+  if (!tq.chips.length) { alert('Escolha pelo menos um atleta, ou use "Pular" ou "Foto geral".'); return; }
+  const id = tq.ids[tq.i];
+  try { for (const a of tq.chips) await api('photos', { action: 'assign', ids: [id], athleteId: a }); } catch (e) { alert('Erro: ' + e.message); return; }
+  if (!tq.sticky) tq.chips = []; tq.i++; trender();
+}
+async function tqGeral() {
+  try { await api('photos', { action: 'geral', ids: [tq.ids[tq.i]] }); } catch (e) { alert('Erro: ' + e.message); return; }
+  tq.i++; trender();
+}
+
 // ---------- Fotos: upload com marca d'água gerada aqui no navegador ----------
 const norm = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 let athletesCache = [], brandText = 'Leandro Garozi Fotografia';

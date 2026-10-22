@@ -25,8 +25,15 @@ export async function onRequestPost({ request, env }) {
   const ids = [...new Set((b.ids || []).map(String))].filter((id) => /^[0-9a-f-]{36}$/.test(id)).slice(0, 500);
   if (!ids.length) return bad('Nenhuma foto selecionada.');
   const js = JSON.stringify(ids);
+  if (b.action === 'geral') { // olhada na triagem e deixada como geral: sai da fila
+    await env.DB.prepare('UPDATE photos SET triaged = 1 WHERE id IN (SELECT value FROM json_each(?))').bind(js).run();
+    return json({ ok: true, count: ids.length });
+  }
   if (['assign', 'unassign', 'clear'].includes(b.action)) {
-    if (b.action === 'clear') await env.DB.prepare('DELETE FROM photo_athletes WHERE photo_id IN (SELECT value FROM json_each(?))').bind(js).run();
+    if (b.action === 'clear') await env.DB.batch([
+      env.DB.prepare('DELETE FROM photo_athletes WHERE photo_id IN (SELECT value FROM json_each(?))').bind(js),
+      env.DB.prepare('UPDATE photos SET triaged = 0 WHERE id IN (SELECT value FROM json_each(?))').bind(js),
+    ]);
     else {
       const a = await env.DB.prepare('SELECT id FROM athletes WHERE id = ?').bind(Number(b.athleteId)).first();
       if (!a) return bad('Atleta não encontrado.');

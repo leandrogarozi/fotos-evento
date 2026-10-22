@@ -1,4 +1,5 @@
 import { hmacHex, safeEqual } from './util.js';
+import { getConfig } from './db.js';
 
 export const PAID = ['pago', 'liberado'];
 const secret = (env) => env.DOWNLOAD_SECRET || env.ADMIN_PASSWORD || '';
@@ -8,13 +9,17 @@ const READY = 'p.has_orig = 1 AND p.has_prev = 1';
 // enviadas depois da compra (é isso que libera a pré-venda sozinha).
 export async function orderPhotos(env, order) {
   if (!PAID.includes(order.status)) return [];
-  const q = order.kind === 'todas'
-    ? [`SELECT p.id, p.filename FROM photos p WHERE ${READY} AND (
+  let q;
+  if (order.kind === 'todas') {
+    const claims = Number((await getConfig(env)).claim_enabled) === 1; // marcações livres só contam se estiver ligado
+    q = [`SELECT p.id, p.filename FROM photos p WHERE ${READY} AND (
           EXISTS (SELECT 1 FROM photo_athletes pa WHERE pa.photo_id = p.id AND pa.athlete_id = ?)
-          OR EXISTS (SELECT 1 FROM order_photos op WHERE op.photo_id = p.id AND op.order_id = ?))
-        ORDER BY p.filename`, [order.athlete_id, order.id]]
-    : [`SELECT p.id, p.filename FROM photos p JOIN order_photos op ON op.photo_id = p.id
+          ${claims ? 'OR EXISTS (SELECT 1 FROM order_photos op WHERE op.photo_id = p.id AND op.order_id = ?)' : ''})
+        ORDER BY p.filename`, claims ? [order.athlete_id, order.id] : [order.athlete_id]];
+  } else {
+    q = [`SELECT p.id, p.filename FROM photos p JOIN order_photos op ON op.photo_id = p.id
         WHERE op.order_id = ? AND ${READY} ORDER BY p.filename`, [order.id]];
+  }
   const { results } = await env.DB.prepare(q[0]).bind(...q[1]).all();
   return results;
 }

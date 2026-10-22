@@ -5,7 +5,9 @@ export async function onRequestGet({ request, env }) {
   const q = new URL(request.url).searchParams;
   const a = Number(q.get('athlete'));
   const ready = 'p.has_orig = 1 AND p.has_prev = 1';
-  const { results } = q.get('geral')
+  const { results } = q.get('queue')
+    ? await env.DB.prepare(`SELECT p.id FROM photos p WHERE ${ready} AND p.triaged = 0 AND NOT EXISTS (SELECT 1 FROM photo_athletes pa WHERE pa.photo_id = p.id) ORDER BY p.filename`).all()
+    : q.get('geral')
     ? await env.DB.prepare(`SELECT p.id FROM photos p WHERE ${ready} AND NOT EXISTS (SELECT 1 FROM photo_athletes pa WHERE pa.photo_id = p.id) ORDER BY p.filename`).all()
     : a
     ? await env.DB.prepare(`SELECT DISTINCT p.id FROM photos p JOIN photo_athletes pa ON pa.photo_id = p.id

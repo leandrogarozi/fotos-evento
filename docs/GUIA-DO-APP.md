@@ -62,11 +62,12 @@ Importante: o repositório `leandrogarozi/core` é o painel pessoal FARO. Este a
 - Opções: pacote completo (R$ 60 por 5 dias após publicar, depois R$ 80) ou fotos avulsas (1 foto R$ 15, 4 fotos R$ 40). O carrinho sempre cobra o MENOR preço possível (3 fotos cobram 40 e avisam que dá para levar mais 1 sem pagar a mais; 5 fotos custam 55 e oferecem o pacote). O cálculo é feito no SERVIDOR (`/api/quote` e `/api/checkout`), a tela só mostra.
 - Na galeria do atleta: "Você aparece em X fotos. Por mais R$ Y leva todas." e botão "Quero todas".
 
-### Como o comprador acha as fotos dele (decisão importante)
-O Leandro não sabe quem é quem nas fotos e não há reconhecimento facial (decisão consciente: o Claude não identifica pessoas por rosto). Por isso:
-- O Leandro sobe tudo como "Fotos gerais" (sem atleta).
-- Quem comprou o PACOTE COMPLETO entra por "Já comprei", abre "Escolher minhas fotos" e marca com coração as fotos em que aparece. Sem limite por padrão (config `claim_max`, 0 = sem limite). Só as marcadas ficam disponíveis para baixar.
-- Fotos que o Leandro sabe de quem são podem ser enviadas por pasta de atleta e já chegam para quem comprou o pacote daquele atleta.
+### Como cada comprador recebe as fotos dele (decisão de 22/10/2026)
+Sem reconhecimento facial (decisão consciente: o Claude não identifica pessoas por rosto), e sem marcação livre: se quem comprou o pacote pudesse marcar fotos à vontade, poderia pegar fotos de outros atletas e repassar. Por isso:
+- O Leandro sobe tudo (todas entram na galeria geral, sem atleta).
+- A aba **Triagem** do painel mostra uma foto por vez; o Leandro (ou o treinador) digita parte do nome do atleta, Enter escolhe, Enter com campo vazio salva e vai para a próxima. "Foto geral" tira da fila fotos de torcida e ambiente. Também dá para atribuir em massa em "Fotos enviadas" (seleciona várias, "Atribuir a...") ou subir por pasta de atleta (modo avançado).
+- O pacote completo libera SÓ as fotos atribuídas ao atleta. Fotos sem atleta ficam para venda avulsa.
+- Opcional e DESLIGADO por padrão: `claim_enabled = 1` religa a marcação livre ("Escolher minhas fotos"), com limite opcional `claim_max`. Com a chave desligada, marcações antigas não liberam nada.
 - Quem comprou fotos avulsas baixa exatamente as que escolheu.
 
 ### Acesso do comprador (sem login/cadastro)
@@ -96,7 +97,8 @@ Login com `ADMIN_PASSWORD` (token HMAC de 12 horas guardado na sessão do navega
 
 - **Pedidos**: lista, total vendido, status. Botões: Verificar (consulta o Mercado Pago), Liberar (marca como pago manualmente, serve se o webhook falhar, e também dispara o e-mail), Avisar (abre o WhatsApp do comprador com mensagem pronta), Ver (abre a página do pedido), Senha (redefine e reenvia), Atleta (corrige o atleta de um pedido), Excluir (pedido pago exige digitar EXCLUIR).
 - **Preços e datas**: preços em R$, datas no horário de Brasília, botão "Agora" em "Fotos publicadas em", encerramento das vendas, limite de marcação, nome do evento e texto da marca d'água. Mostra um quadro com o encerramento efetivo.
-- **Fotos**: upload (JPG). Opções: marcar atletas da leva, "Fotos gerais", ou escolher uma pasta com subpastas por atleta (nome da subpasta = nome do atleta; "Ana + Bruno" para duas pessoas; "Geral" para sem atleta). A vitrine com marca d'água é gerada NO NAVEGADOR (canvas) e enviada junto com a original (PUT direto para o R2, 2 envios paralelos). Lista "Fotos enviadas" por atleta, todas ou gerais, com seleção múltipla e exclusão em massa.
+- **Fotos**: upload simples (JPG, todas entram na galeria geral; a pasta por atleta fica em "Avançado": nome da subpasta = nome do atleta, "Ana + Bruno" para duas pessoas, "Geral" para sem atleta). Em "Fotos enviadas": seleção múltipla, atribuir a atleta, tirar do atleta, deixar sem atleta e excluir em massa.
+- **Triagem**: identificar quem aparece em cada foto, uma por vez (teclado). A vitrine com marca d'água é gerada NO NAVEGADOR (canvas) e enviada junto com a original (PUT direto para o R2, 2 envios paralelos). Lista "Fotos enviadas" por atleta, todas ou gerais, com seleção múltipla e exclusão em massa.
 - **Atletas**: adicionar, tirar da lista, voltar para a lista.
 - **Link e QR**: links e QR codes da página de venda, do "Já comprei" e da galeria geral (QR por serviço externo qrserver.com).
 
@@ -116,8 +118,8 @@ functions/         API (Cloudflare Pages Functions, JavaScript ESM)
   _lib/            pricing, db, access, auth, mp, mail, paid, pin, schema, secret, sync, util
   api/             rotas (ver seção 6)
   img/[id].js      vitrine pública
-migrations/        0001 a 0005 (referência; o esquema também se completa sozinho em schema.js)
-test/              38 testes (node:test)
+migrations/        0001 a 0006 (referência; o esquema também se completa sozinho em schema.js)
+test/              46 testes (node:test)
 docs/              este guia e enviar-email.gs
 ```
 
@@ -129,14 +131,14 @@ Admin (Bearer token): `POST /api/admin/login`, `GET|POST /api/admin/orders`, `GE
 
 ## 7. Dados
 
-Tabelas D1: `config` (chave/valor), `athletes`, `orders`, `photos`, `photo_athletes`, `order_photos`, `access_attempts`.
+Tabelas D1: `config` (chave/valor), `athletes`, `orders`, `photos` (coluna `triaged`: foto já olhada na triagem e deixada como geral), `photo_athletes`, `order_photos`, `access_attempts`.
 
 - `orders.kind`: `todas` (pacote completo de um atleta) ou `fotos` (avulsas, listadas em `order_photos`). `status`: `aguardando`, `pago`, `liberado`, `erro`. `presale`: 1 se veio da pré-venda. Campos de senha: `pin_salt`, `pin_hash`, `pin_enc` (temporário).
-- Pacote `todas` libera: fotos marcadas para o atleta em `photo_athletes` MAIS as marcadas pelo comprador em `order_photos`.
+- Pacote `todas` libera as fotos atribuídas ao atleta em `photo_athletes` (e, só se `claim_enabled = 1`, as marcadas pelo comprador em `order_photos`).
 - Foto só aparece se `has_orig = 1` e `has_prev = 1` (upload completo).
 - R2: `orig/<id>` (original privada) e `prev/<id>` (vitrine).
 
-Chaves de `config` (valores em centavos nos preços; o painel mostra R$): `event_name`, `event_date`, `brand_text`, `whatsapp`, `presale_end`, `presale_price_cents`, `price_one_cents`, `price_four_cents`, `price_all_event_cents`, `price_all_late_cents`, `price_box_cents` (campo existe, ainda não usado), `published_at`, `late_after_days`, `claim_max`, `sales_end`, `sales_days`. Os padrões ficam em `functions/_lib/pricing.js` (`DEFAULTS`).
+Chaves de `config` (valores em centavos nos preços; o painel mostra R$): `event_name`, `event_date`, `brand_text`, `whatsapp`, `presale_end`, `presale_price_cents`, `price_tiers` (pacotes de fotos avulsas, JSON [{n, cents}]; vazio usa `price_one_cents` e `price_four_cents`), `price_all_event_cents`, `price_all_late_cents`, `price_box_cents` (campo existe, ainda não usado), `published_at`, `late_after_days`, `claim_enabled`, `claim_max`, `sales_end`, `sales_days` e os textos das páginas `txt_*` (editáveis no painel; `*asteriscos*` destacam). Os padrões ficam em `functions/_lib/pricing.js` (`DEFAULTS`).
 
 ## 8. Visual
 
@@ -196,3 +198,7 @@ O que seria novo: sessão por cliente (um "evento" por ensaio, com cota COM/SEM 
 - Valores sempre calculados no servidor; pagamento sempre confirmado consultando a API do Mercado Pago.
 - Bloqueio por tentativas no "Já comprei". Exclusões sensíveis exigem confirmação digitada.
 - Nunca colocar segredos no código, no repositório ou em conversa.
+
+## 13. Histórico de decisões recentes (22/10/2026)
+- Layout: uma proposta mais limpa (Inter, grade de 3 colunas) foi montada na branch `layout-limpo`, mas o Leandro preferiu manter o visual atual. A branch fica parada, sem publicar.
+- Vários eventos ao mesmo tempo: adiado. Hoje é um evento por vez (nome e textos editáveis no painel); para o Vida Ativa, trocar nome, textos e atletas e limpar fotos e pedidos antigos.

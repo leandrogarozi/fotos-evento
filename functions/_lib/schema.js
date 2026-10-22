@@ -7,7 +7,10 @@ const DDL = [
   `CREATE TABLE IF NOT EXISTS order_photos (order_id TEXT NOT NULL REFERENCES orders(id), photo_id TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE, PRIMARY KEY (order_id, photo_id))`,
   `CREATE TABLE IF NOT EXISTS access_attempts (wpp TEXT PRIMARY KEY, fails INTEGER NOT NULL DEFAULT 0, locked_until TEXT)`,
 ];
-const ORDER_COLUMNS = [['pin_salt', "TEXT NOT NULL DEFAULT ''"], ['pin_hash', "TEXT NOT NULL DEFAULT ''"], ['pin_enc', "TEXT NOT NULL DEFAULT ''"]];
+const ADD_COLUMNS = [
+  ['orders', 'pin_salt', "TEXT NOT NULL DEFAULT ''"], ['orders', 'pin_hash', "TEXT NOT NULL DEFAULT ''"], ['orders', 'pin_enc', "TEXT NOT NULL DEFAULT ''"],
+  ['photos', 'triaged', 'INTEGER NOT NULL DEFAULT 0'],
+];
 
 let ready = null;
 export function ensureSchema(env) {
@@ -19,10 +22,12 @@ export const resetSchemaCache = () => { ready = null; };
 
 async function run(env) {
   await env.DB.batch(DDL.map((s) => env.DB.prepare(s)));
-  const { results } = await env.DB.prepare('PRAGMA table_info(orders)').all();
-  const have = new Set(results.map((r) => r.name));
-  for (const [name, def] of ORDER_COLUMNS) {
-    if (have.has(name)) continue;
-    try { await env.DB.prepare(`ALTER TABLE orders ADD COLUMN ${name} ${def}`).run(); } catch (_) { /* outra instância criou antes */ }
+  for (const table of [...new Set(ADD_COLUMNS.map((c) => c[0]))]) {
+    const { results } = await env.DB.prepare(`PRAGMA table_info(${table})`).all();
+    const have = new Set(results.map((r) => r.name));
+    for (const [, name, def] of ADD_COLUMNS.filter((c) => c[0] === table)) {
+      if (have.has(name)) continue;
+      try { await env.DB.prepare(`ALTER TABLE ${table} ADD COLUMN ${name} ${def}`).run(); } catch (_) { /* outra instância criou antes */ }
+    }
   }
 }

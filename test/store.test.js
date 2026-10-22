@@ -169,6 +169,7 @@ test('fotos gerais (sem atleta): aparecem só na galeria geral e se apagam norma
 });
 
 test('marcar as próprias fotos (pacote completo sem atleta nas fotos): baixa só as marcadas, respeita o limite', async () => {
+  await env.DB.prepare("INSERT OR REPLACE INTO config (key, value) VALUES ('claim_enabled', '1')").run();
   const g = [await upload('g1.jpg', [], 'ORIG-G1'), await upload('g2.jpg', [], 'ORIG-G2'), await upload('g3.jpg', [], 'ORIG-G3')];
   const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 3, all: true, name: 'Vanessa', pin: '1234', email: 'v@b.com', whatsapp: '27955554444' }), env })).json();
   const claimReq = (token, photoIds) => claim.onRequestPost({ request: post('/api/claim', { token, photoIds }), env });
@@ -236,4 +237,38 @@ test('atribuir fotos gerais a um atleta (em massa), tirar e deixar sem atleta', 
   assert.equal((await list('?athlete=6')).length, 0);
   assert.equal((await list('?geral=1')).includes(g2), true);
   assert.equal((await aPhotos.onRequestPost({ request: post('/a', { action: 'assign', ids: [g1], athleteId: 6 }), env })).status, 401);
+});
+
+test('marcação livre desligada: não aceita marcação e marcações antigas não liberam nada', async () => {
+  const g = await upload('off.jpg', [], 'ORIG-OFF');
+  const c = await (await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 7, all: true, name: 'Dani', pin: '1234', email: 'd@b.com', whatsapp: '27911110000' }), env })).json();
+  await pay(6000);
+  await env.DB.prepare("INSERT OR REPLACE INTO config (key, value) VALUES ('claim_enabled', '1')").run();
+  assert.equal((await claim.onRequestPost({ request: post('/api/claim', { token: c.token, photoIds: [g] }), env })).status, 200);
+  assert.equal((await orderOf(c.token)).photos.length, 1, 'ligado: a marcação libera');
+  await env.DB.prepare("INSERT OR REPLACE INTO config (key, value) VALUES ('claim_enabled', '0')").run();
+  const p = await orderOf(c.token);
+  assert.equal(p.photos.length, 0, 'desligado: a marcação antiga não libera foto de outro atleta');
+  assert.equal(p.claimEnabled, false);
+  assert.equal((await claim.onRequestPost({ request: post('/api/claim', { token: c.token, photoIds: [g] }), env })).status, 403);
+  assert.equal((await (await event.onRequestGet({ env })).json()).claimEnabled, false);
+  // o que o Leandro atribui ao atleta continua liberando
+  await aPhotos.onRequestPost({ request: post('/a', { action: 'assign', ids: [g], athleteId: 7 }, H), env });
+  assert.equal((await orderOf(c.token)).photos.length, 1);
+});
+
+test('triagem: fila só com fotos sem atleta e não olhadas; geral sai da fila; deixar sem atleta volta', async () => {
+  const [t1, t2, t3] = [await upload('t1.jpg', [], 'T1'), await upload('t2.jpg', [], 'T2'), await upload('t3.jpg', [], 'T3')];
+  const queue = async () => (await (await photosApi.onRequestGet({ request: req('/api/photos?queue=1'), env })).json()).photos;
+  const act = (b) => aPhotos.onRequestPost({ request: post('/a', b, H), env });
+  assert.ok([t1, t2, t3].every((id) => queue.length || true));
+  let q = await queue(); assert.ok(q.includes(t1) && q.includes(t2) && q.includes(t3));
+  await act({ action: 'assign', ids: [t1], athleteId: 8 });
+  await act({ action: 'geral', ids: [t2] });
+  q = await queue();
+  assert.equal(q.includes(t1), false, 'com atleta sai da fila'); assert.equal(q.includes(t2), false, 'geral confirmada sai da fila'); assert.equal(q.includes(t3), true);
+  const geral = (await (await photosApi.onRequestGet({ request: req('/api/photos?geral=1'), env })).json()).photos;
+  assert.equal(geral.includes(t2), true, 'continua nas fotos gerais'); assert.equal(geral.includes(t1), false);
+  await act({ action: 'clear', ids: [t1, t2] });
+  q = await queue(); assert.ok(q.includes(t1) && q.includes(t2), 'deixar sem atleta devolve para a fila');
 });

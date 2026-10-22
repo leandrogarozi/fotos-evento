@@ -177,12 +177,13 @@ $('f').addEventListener('submit', async (x) => {
 Promise.all([fetch('/api/event').then((r) => r.json()), fetch('/api/photos' + (A && !CLAIM ? '?athlete=' + A : '')).then((r) => r.json()), A && !CLAIM ? fetch('/api/photos').then((r) => r.json()) : Promise.resolve(null), CLAIM ? fetch('/api/pedido/' + encodeURIComponent(CLAIM)).then((r) => r.json()) : Promise.resolve(null)]).then(([e, p, all, ped]) => {
   ev = e; ids = p.photos; claimMax = e.claimMax || 0; sel = new Set(CLAIM ? ((ped && ped.claimed) || []).filter((id) => ids.includes(id)) : load().filter((id) => ids.includes(id)));
   document.title = 'Fotos: ' + e.eventName;
+  if (CLAIM && !e.claimEnabled) { $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Estamos separando <em>suas fotos</em></h1><p class="lead">As fotos são identificadas por atleta e aparecem na sua página do pedido assim que ficarem prontas.</p><a class="btn go full" style="width:100%" href="pedido.html?t=${encodeURIComponent(CLAIM)}">Voltar ao meu pedido</a>`; return; }
   if (e.salesClosed && !CLAIM) { $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>${tTitle(e.texts.txt_closed_title)}</h1><p class="lead">${tLead(e.texts.txt_closed_lead)}</p><a class="btn go full" style="width:100%" href="acesso.html">Já comprei, acessar minhas fotos</a>`; return; }
   if (!ids.length && A && all && all.photos.length) {
     const ath = e.athletes.find((a) => a.id === A); const first = ath ? ath.name.split(' ')[0] : '';
     $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Fotos de <em>${esc(first)}</em></h1>
-      <p class="lead">Ainda não separamos as fotos por atleta. Você tem duas opções:</p>
-      <div class="card"><h2>Pacote completo: ${reais(e.allPrice)}</h2><p class="muted" style="font-size:14px">Você paga e marca no site as fotos em que aparece, sem marca d'água.</p><button class="go full" id="buyall">Quero o pacote completo</button></div>
+      <p class="lead">${e.claimEnabled ? 'Ainda não separamos as fotos por atleta. Você tem duas opções:' : 'As fotos deste atleta ainda estão sendo separadas. Você pode:'}</p>
+      <div class="card"><h2>Pacote completo: ${reais(e.allPrice)}</h2><p class="muted" style="font-size:14px">${e.claimEnabled ? 'Você paga e marca no site as fotos em que aparece, sem marca d\'água.' : 'Você paga agora e as fotos aparecem na sua página assim que forem identificadas, sem marca d\'água.'}</p><button class="go full" id="buyall">Quero o pacote completo</button></div>
       <div class="card" style="background:var(--card2);border:0"><h2>Fotos avulsas</h2><p class="muted" style="font-size:14px">${(e.tiers || []).map((t) => t.n + ' foto' + (t.n > 1 ? 's' : '') + ' ' + reais(t.cents)).join(' · ')}. Veja todas as fotos e escolha as suas.</p><a class="btn light full" style="width:100%" href="galeria.html">Ver todas as fotos</a></div>`;
     $('buyall').onclick = () => openSheet('all');
     return;

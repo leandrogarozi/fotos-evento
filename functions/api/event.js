@@ -15,6 +15,7 @@ export async function onRequestGet({ env }) {
     whatsapp: cfg.whatsapp,
     brandText: cfg.brand_text,
     texts: Object.fromEntries(Object.keys(DEFAULTS).filter((k) => k.startsWith('txt_')).map((k) => [k, cfg[k] || DEFAULTS[k]])),
+    claimEnabled: Number(cfg.claim_enabled) === 1,
     claimMax: Math.max(0, Number(cfg.claim_max) || 0),
     tiers: parseTiers(cfg),
     prices: { one: (parseTiers(cfg).find((t) => t.n === 1) || {}).cents || null, four: (parseTiers(cfg).find((t) => t.n === 4) || {}).cents || null },
