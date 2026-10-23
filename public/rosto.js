@@ -128,8 +128,8 @@
         say('Buscando nas fotos do evento...');
         const r = await fetch('/api/rosto', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ e: opt.e || '', d: faces[0].d }) });
         const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Erro');
-        if (!d.ids.length) { fallback('Não achamos fotos suas pelo rosto.' + (athleteId ? '' : ' Escolha seu nome na lista acima e busque de novo, ou veja todas as fotos.')); return; }
-        close(); opt.onDone(d.ids, athleteId);
+        if (!d.ids.length && !(d.maybe || []).length) { fallback('Não achamos fotos suas pelo rosto.' + (athleteId ? '' : ' Escolha seu nome na lista acima e busque de novo, ou veja todas as fotos.')); return; }
+        close(); opt.onDone(d.ids, athleteId, d.maybe || []);
       } catch (e) {
         fallback('Não consegui fazer a busca agora.');
       } finally { busy = false; refresh(); }
@@ -142,5 +142,33 @@
     setMode(opt.mode === 'up' ? 'up' : 'cam');
   }
 
-  window.Rosto = { open, describe, loadLib, fileToCanvas };
+  // Painel: acha TODOS os rostos da foto, inclusive de gente ao fundo. Em "completa", a foto grande é cortada em pedaços
+  // (cada um analisado em boa resolução), senão rostos pequenos somem. Devolve [{ v: 128 números, w: largura em pixels da foto original }].
+  async function scan(file, quality) {
+    const f = await loadLib();
+    if (!f.nets.ssdMobilenetv1.isLoaded) await f.nets.ssdMobilenetv1.loadFromUri('/vendor/models');
+    let bmp;
+    try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+    catch (_) { const u = URL.createObjectURL(file); bmp = new Image(); bmp.src = u; await bmp.decode(); URL.revokeObjectURL(u); }
+    const W0 = bmp.naturalWidth || bmp.width, H0 = bmp.naturalHeight || bmp.height;
+    const full = quality === 'completa', k = Math.min(1, (full ? 3200 : 1600) / Math.max(W0, H0));
+    const W = Math.round(W0 * k), H = Math.round(H0 * k);
+    const big = document.createElement('canvas'); big.width = W; big.height = H; big.getContext('2d').drawImage(bmp, 0, 0, W, H); if (bmp.close) bmp.close();
+    const T = full ? 1100 : Math.max(W, H), STEP = full ? 900 : T;
+    const pos = (n) => { const a = []; for (let x = 0; ; x += STEP) { a.push(Math.max(0, Math.min(x, n - T))); if (x + T >= n) break; } return [...new Set(a)]; };
+    const all = [], tc = document.createElement('canvas');
+    for (const ty of pos(H)) for (const tx of pos(W)) {
+      const tw = Math.min(T, W - tx), th = Math.min(T, H - ty); tc.width = tw; tc.height = th;
+      tc.getContext('2d').drawImage(big, tx, ty, tw, th, 0, 0, tw, th);
+      const r = await f.detectAllFaces(tc, new f.SsdMobilenetv1Options({ minConfidence: 0.4 })).withFaceLandmarks().withFaceDescriptors();
+      for (const x of r) { const b = x.detection.box; if (b.width >= 24) all.push({ v: Array.from(x.descriptor), w: b.width, cx: tx + b.x + b.width / 2, cy: ty + b.y + b.height / 2 }); }
+    }
+    all.sort((a, b) => b.w - a.w);
+    const kept = [];
+    for (const a of all) if (!kept.some((b) => Math.hypot(a.cx - b.cx, a.cy - b.cy) < 0.6 * Math.max(a.w, b.w))) kept.push(a); // mesmo rosto visto em dois pedaços
+    big.width = big.height = tc.width = tc.height = 1;
+    return kept.slice(0, 16).map((x) => ({ v: x.v, w: Math.round(x.w / k) }));
+  }
+
+  window.Rosto = { open, describe, loadLib, fileToCanvas, scan };
 })();

@@ -74,7 +74,7 @@ const eq = E ? '?e=' + encodeURIComponent(E) : '', eand = E ? '&e=' + encodeURIC
 document.querySelectorAll('a[href="index.html"]').forEach((x) => { x.href = 'index.html' + eq; });
 const TESTE = Q.has('teste');
 const R = Q.get('r') === '1'; // veio da busca por rosto
-let faceIds = []; try { faceIds = R ? JSON.parse(sessionStorage.getItem('rosto:' + (E || 'principal')) || '[]') : []; } catch (_) {}
+let faceIds = [], maybeIds = []; try { const raw = R ? JSON.parse(sessionStorage.getItem('rosto:' + (E || 'principal')) || '[]') : []; faceIds = Array.isArray(raw) ? raw : (raw.ids || []); maybeIds = Array.isArray(raw) ? [] : (raw.maybe || []); } catch (_) {}
 let secs = [], tagged = new Set();
 const X = Q.get('x') || ''; // modo fotos adicionais: token do pacote já comprado
 const KEY = (X ? 'selx:' + X : 'sel:' + A);
@@ -90,13 +90,13 @@ function header() {
   const dl = ev.deadline, T = ev.texts || {};
   $('root').innerHTML = `
     <div class="eyebrow">${esc(ev.eventName)}</div>
-    <h1>${X ? 'Fotos <em>adicionais</em>' : R && faceIds.length ? 'Fotos que <em>parecem você</em>' : tTitle(CLAIM ? T.txt_claim_title : ath ? T.txt_gallery_title_athlete : T.txt_gallery_title, { nome: first })}</h1>
-    <p class="lead">${X ? `Estas são as outras fotos de <b>${esc(first)}</b>. Cada foto adicional custa <b>${reais(ev.extraUnit)}</b>.` : CLAIM ? tLead(T.txt_claim_lead) : R && faceIds.length ? `Achamos <b>${faceIds.length}</b> foto${faceIds.length === 1 ? '' : 's'} com um rosto parecido com o da sua selfie. Toque no coração das que quiser levar. Se alguma não for sua, é só não marcar.` : (ath ? (tagged.size ? `Você aparece em <b>${tagged.size}</b> foto${tagged.size === 1 ? '' : 's'}. ` : 'Ainda não separamos fotos pelo seu nome. ') : '') + tLead(T.txt_gallery_lead)}</p>
+    <h1>${X ? 'Fotos <em>adicionais</em>' : R && (faceIds.length || maybeIds.length) ? 'Fotos que <em>parecem você</em>' : tTitle(CLAIM ? T.txt_claim_title : ath ? T.txt_gallery_title_athlete : T.txt_gallery_title, { nome: first })}</h1>
+    <p class="lead">${X ? `Estas são as outras fotos de <b>${esc(first)}</b>. Cada foto adicional custa <b>${reais(ev.extraUnit)}</b>.` : CLAIM ? tLead(T.txt_claim_lead) : R && (faceIds.length || maybeIds.length) ? `${faceIds.length ? `Achamos <b>${faceIds.length}</b> foto${faceIds.length === 1 ? '' : 's'} com um rosto parecido com o da sua selfie.` : 'Não achamos fotos com certeza.'}${maybeIds.length ? ` Separamos também <b>${maybeIds.length}</b> em que talvez seja você (rosto pequeno ou de longe), mais abaixo.` : ''} Toque no coração das que quiser levar. Se alguma não for sua, é só não marcar.` : (ath ? (tagged.size ? `Você aparece em <b>${tagged.size}</b> foto${tagged.size === 1 ? '' : 's'}. ` : 'Ainda não separamos fotos pelo seu nome. ') : '') + tLead(T.txt_gallery_lead)}</p>
     ${!CLAIM && ev.salesEnd ? `<div class="box sage" style="max-width:560px;font-size:15px"><b>Vendas encerram em ${fmt(ev.salesEnd)}</b>. Depois disso não será possível comprar.</div>` : ''}
         ${!CLAIM && !X && ath && dl.until ? `<div class="box sage" style="max-width:560px">Pacote completo${ev.packLimit ? ' (até ' + ev.packLimit + ' fotos, adicionais ' + reais(ev.packExtra) + ' cada)' : ''} por ${reais(ev.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}.</div>` : ''}
     ${(ev.faceEnabled || TESTE) && !CLAIM && !X ? '<button class="light small" id="face-again" style="margin-top:14px">Buscar pelo meu rosto</button>' : ''}
     <div id="grid"></div>`;
-  if ($('face-again')) $('face-again').onclick = () => Rosto.open({ e: E, athletes: ev.athletes, athleteId: A, onDone: (f, a) => { try { sessionStorage.setItem('rosto:' + (E || 'principal'), JSON.stringify(f)); } catch (_) {} location.href = 'galeria.html?' + (a ? 'a=' + a + '&' : '') + 'r=1' + eand; } });
+  if ($('face-again')) $('face-again').onclick = () => Rosto.open({ e: E, athletes: ev.athletes, athleteId: A, onDone: (f, a, m) => { try { sessionStorage.setItem('rosto:' + (E || 'principal'), JSON.stringify({ ids: f, maybe: m || [] })); } catch (_) {} location.href = 'galeria.html?' + (a ? 'a=' + a + '&' : '') + 'r=1' + eand; } });
   $('grid').innerHTML = secs.map((s) => `${s.title ? `<div class="sect">${s.title} (${s.ids.length})</div>` : ''}<div class="grid">${s.ids.map((id) => `<div class="ph" data-id="${id}"><img src="/img/${id}" loading="lazy" alt="" draggable="false"><button class="heart" aria-label="Escolher foto">♡</button></div>`).join('')}</div>`).join('');
   $('grid').querySelectorAll('.ph').forEach((el) => {
     el.onclick = (e) => { if (e.target.closest('.heart')) toggle(el.dataset.id); else openLb(ids.indexOf(el.dataset.id)); };
@@ -200,10 +200,10 @@ Promise.all([fetch('/api/event' + eq).then((r) => r.json()), fetch('/api/photos?
   if (e.error) { $('root').innerHTML = '<h1 style="margin-top:40px">Evento <em>não encontrado</em></h1>'; return; }
   ev = e; tagged = new Set(A ? p.photos : []);
   if (A) {
-    const foundOnly = faceIds.filter((id) => !tagged.has(id)), seen = new Set([...tagged, ...foundOnly]);
+    const foundOnly = faceIds.filter((id) => !tagged.has(id)), maybeOnly = maybeIds.filter((id) => !tagged.has(id) && !foundOnly.includes(id)), seen = new Set([...tagged, ...foundOnly, ...maybeOnly]);
     const general = (p.general || []).filter((id) => !seen.has(id));
-    secs = [{ title: (foundOnly.length || general.length) ? 'Suas fotos' : '', ids: p.photos }, { title: 'Encontradas pela sua selfie', ids: foundOnly }, { title: 'Fotos gerais do evento', ids: general }].filter((s) => s.ids.length);
-  } else if (R && faceIds.length) { const okIds = new Set(p.photos); secs = [{ title: '', ids: faceIds.filter((id) => okIds.has(id)) }]; }
+    secs = [{ title: (foundOnly.length || maybeOnly.length || general.length) ? 'Suas fotos' : '', ids: p.photos }, { title: 'Encontradas pela sua selfie', ids: foundOnly }, { title: 'Talvez sejam você', ids: maybeOnly }, { title: 'Fotos gerais do evento', ids: general }].filter((s) => s.ids.length);
+  } else if (R && (faceIds.length || maybeIds.length)) { const okIds = new Set(p.photos); secs = [{ title: maybeIds.length ? 'Parecem você' : '', ids: faceIds.filter((id) => okIds.has(id)) }, { title: 'Talvez sejam você', ids: maybeIds.filter((id) => okIds.has(id) && !faceIds.includes(id)) }].filter((s) => s.ids.length); }
   else secs = [{ title: '', ids: p.photos }];
   ids = secs.flatMap((s) => s.ids);
   if (X && ped) { const own = new Set((ped.photos || []).map((x) => x.id)); ids = ids.filter((id) => !own.has(id)); } claimMax = e.claimMax || 0; sel = new Set(CLAIM ? ((ped && ped.claimed) || []).filter((id) => ids.includes(id)) : load().filter((id) => ids.includes(id)));

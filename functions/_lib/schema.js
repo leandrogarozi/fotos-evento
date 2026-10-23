@@ -21,7 +21,7 @@ const SEED = [
 const ADD_COLUMNS = [
   ['orders', 'pin_salt', "TEXT NOT NULL DEFAULT ''"], ['orders', 'pin_hash', "TEXT NOT NULL DEFAULT ''"], ['orders', 'pin_enc', "TEXT NOT NULL DEFAULT ''"],
   ['photos', 'triaged', 'INTEGER NOT NULL DEFAULT 0'],
-  ['athletes', 'event_id', 'INTEGER NOT NULL DEFAULT 1'], ['photos', 'event_id', 'INTEGER NOT NULL DEFAULT 1'], ['orders', 'event_id', 'INTEGER NOT NULL DEFAULT 1'], ['orders', 'pack_limit', 'INTEGER NOT NULL DEFAULT 0'], ['photos', 'faces_done', 'INTEGER NOT NULL DEFAULT 0'],
+  ['athletes', 'event_id', 'INTEGER NOT NULL DEFAULT 1'], ['photos', 'event_id', 'INTEGER NOT NULL DEFAULT 1'], ['orders', 'event_id', 'INTEGER NOT NULL DEFAULT 1'], ['orders', 'pack_limit', 'INTEGER NOT NULL DEFAULT 0'], ['photos', 'faces_done', 'INTEGER NOT NULL DEFAULT 0'], ['photo_faces', 'w', 'INTEGER NOT NULL DEFAULT 0'],
 ];
 
 let ready = null;

@@ -12,5 +12,5 @@ export async function onRequestPost({ request, env }) {
   const cfg = await getConfig(env, ev.id);
   const max = Math.min(0.8, Math.max(0.2, (Number(cfg.face_dist) || 50) / 100));
   const r = await searchFaces(env, ev.id, Float32Array.from(b.d), max);
-  return json({ ids: r.ids, scanned: r.scanned }, 200, { 'cache-control': 'no-store' });
+  return json({ ids: r.ids, maybe: r.maybe, scanned: r.scanned }, 200, { 'cache-control': 'no-store' });
 }

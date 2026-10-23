@@ -15,7 +15,10 @@ export async function onRequestGet({ request, env }) {
   const total = await env.DB.prepare('SELECT COUNT(*) AS n FROM photos WHERE has_orig = 1 AND has_prev = 1 AND event_id = ?').bind(ev.id).first();
   // Fotos prontas ainda sem os rostos calculados (busca por selfie). ?pendingFaces=1 devolve os ids.
   const pend = await env.DB.prepare('SELECT id FROM photos WHERE has_orig = 1 AND has_prev = 1 AND faces_done = 0 AND event_id = ? ORDER BY filename LIMIT 2000').bind(ev.id).all();
+  let names;
+  if (new URL(request.url).searchParams.get('names')) names = (await env.DB.prepare('SELECT id, filename FROM photos WHERE has_orig = 1 AND has_prev = 1 AND event_id = ?').bind(ev.id).all()).results;
   return json({
+    names,
     total: total.n,
     facesPending: pend.results.length,
     pendingIds: new URL(request.url).searchParams.get('pendingFaces') ? pend.results.map((r) => r.id) : undefined,

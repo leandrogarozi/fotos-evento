@@ -315,6 +315,22 @@ async function tqGeral() {
 // ---------- Fotos: upload com marca d'água gerada aqui no navegador ----------
 const norm = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 let athletesCache = [], brandText = 'Leandro Garozi Fotografia';
+async function redoFaces() {
+  const files = [...$('redo-folder').files].filter(f => /image\/jpeg/.test(f.type)), log = $('redo-log');
+  if (!files.length) { log.textContent = 'Escolha a pasta primeiro.'; return; }
+  $('redo-go').disabled = true;
+  try {
+    const rows = (await api('photos?names=1')).names || [], byName = new Map();
+    rows.forEach(r => byName.set(r.filename, [...(byName.get(r.filename) || []), r.id]));
+    const todo = files.filter(f => byName.has(f.name)); let ok = 0, fail = 0;
+    for (let i = 0; i < todo.length; i++) {
+      log.textContent = `Refazendo ${i + 1} de ${todo.length}: ${todo[i].name}`;
+      try { const faces = await Rosto.scan(todo[i], $('faces-q').value); for (const id of byName.get(todo[i].name)) await saveFaces(id, faces); ok++; } catch (_) { fail++; }
+    }
+    log.textContent = `Pronto: ${ok} foto(s) refeita(s)` + (fail ? `, ${fail} com erro` : '') + `. ${files.length - todo.length} arquivo(s) da pasta não batem com nenhuma foto enviada.`;
+  } catch (e) { log.textContent = 'Erro: ' + e.message; }
+  $('redo-go').disabled = false; try { drawFx((await api('photos')).facesPending); } catch (_) {}
+}
 function drawFx(n) {
   const el = $('fx'); if (!el) return;
   if (!n) { el.style.display = 'none'; return; }
@@ -340,15 +356,21 @@ async function lp() {
     <details style="margin-top:12px"><summary class="muted" style="cursor:pointer;font-size:13px">Ou envie fotos soltas (vão para a Triagem, onde você diz de quem são)</summary>
       <label>Escolha as fotos (JPG)</label><input type="file" id="files" accept="image/jpeg" multiple>
     </details>
-    <label style="display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--ink)"><input type="checkbox" id="faces-on" checked style="margin-top:3px"><span>Preparar a busca por selfie (calcula os rostos de cada foto neste computador; deixa o envio um pouco mais lento)</span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--ink)"><input type="checkbox" id="faces-on" checked style="margin-top:3px"><span>Preparar a busca por selfie (calcula os rostos de cada foto neste computador; deixa o envio mais lento)</span></label>
+    <select id="faces-q" style="margin-top:8px"><option value="completa">Qualidade completa: acha também pessoas ao fundo e de longe (mais lento)</option><option value="rapida">Qualidade rápida: só rostos maiores</option></select>
     <button class="full" id="up" style="margin-top:12px">Enviar fotos</button>
     <div id="uplog" class="muted" style="font-size:13px;margin-top:12px;white-space:pre-line"></div>
     <div id="fx" class="box" style="margin-top:14px;display:none"></div>
+    <details style="margin-top:14px"><summary class="muted" style="cursor:pointer;font-size:13px">Refazer os rostos das fotos já enviadas (sem enviar de novo)</summary>
+      <p class="muted" style="font-size:12.5px;margin:8px 0">Escolha de novo a pasta com as fotos originais deste computador. O painel acha cada foto pelo nome do arquivo e recalcula os rostos com a qualidade escolhida acima. Não envia nada de novo.</p>
+      <input type="file" id="redo-folder" webkitdirectory multiple><button class="small" id="redo-go" style="margin-top:8px">Refazer rostos</button><div id="redo-log" class="muted" style="font-size:12.5px;margin-top:6px;white-space:pre-line"></div>
+    </details>
     <h2 style="margin-top:30px">Fotos enviadas</h2>
     <select id="pm-ath"><option value="">Escolha o atleta para ver as fotos</option><option value="todas">Todas as fotos</option><option value="geral">Fotos gerais (sem atleta)</option>${d.athletes.map(a => `<option value="${a.id}">${esc(a.name)} (${a.n})</option>`).join('')}</select>
     <div id="pm-bar" class="row" style="margin-top:12px"></div>
     <div id="pm-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:14px"></div>`;
   $('up').onclick = startUpload;
+  $('redo-go').onclick = redoFaces;
   drawFx(d.facesPending);
   $('pm-ath').onchange = pmLoad;
 
@@ -357,7 +379,7 @@ async function lp() {
 async function faceVecs(canvas) {
   const f = await Rosto.loadLib();
   const r = await f.detectAllFaces(canvas, new f.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.4 })).withFaceLandmarks().withFaceDescriptors();
-  return r.filter(x => x.detection.box.width >= 28).sort((a, b) => b.detection.box.area - a.detection.box.area).slice(0, 8).map(x => Array.from(x.descriptor));
+  return r.filter(x => x.detection.box.width >= 28).sort((a, b) => b.detection.box.area - a.detection.box.area).slice(0, 16).map(x => ({ v: Array.from(x.descriptor), w: Math.round(x.detection.box.width * 1.6) }));
 }
 async function saveFaces(id, vecs) {
   const r = await fetch(`/api/admin/photo/${id}/faces`, { method: 'POST', headers: { authorization: 'Bearer ' + tok, 'content-type': 'application/json' }, body: JSON.stringify({ faces: vecs }) });
@@ -384,8 +406,6 @@ async function makePreview(file) {
   const w = Math.round(bw * scale), h = Math.round(bh * scale);
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d'); g.drawImage(bmp, 0, 0, w, h);
-  let faces = null;
-  if (wantFaces()) { try { faces = await faceVecs(c); } catch (_) { faces = null; } } // antes da marca d'água
   const logo = await loadLogo();
   g.save(); g.translate(w / 2, h / 2); g.rotate(-Math.PI / 7);
   const diag = Math.hypot(w, h);
@@ -399,8 +419,7 @@ async function makePreview(file) {
     for (let y = -diag, r = 0; y < diag; y += fs * 4, r++) for (let x = -diag + (r % 2) * tw * 0.6; x < diag; x += tw * 1.5) g.fillText(brandText, x, y);
   }
   g.restore(); bmp.close && bmp.close();
-  const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.7));
-  blob.faces = faces; return blob;
+  return new Promise(res => c.toBlob(res, 'image/jpeg', 0.7));
 }
 let pmIds = [], pmSel = new Set();
 async function pmLoad() {
@@ -457,7 +476,7 @@ async function sendOne(file, athleteIds, geral, triaged) {
   const { id } = await api('photo', { filename: file.name, athleteIds, geral: !!geral, triaged: !!triaged });
   try { await put(id, 'prev', prev); await put(id, 'orig', file); }
   catch (e) { await fetch('/api/admin/photo/' + id, { method: 'DELETE', headers: { authorization: 'Bearer ' + tok } }); throw e; }
-  if (prev.faces) { try { await saveFaces(id, prev.faces); } catch (_) { /* fica como pendente; dá para recalcular depois */ } }
+  if (wantFaces()) { try { await saveFaces(id, await Rosto.scan(file, $('faces-q').value)); } catch (_) { /* fica como pendente; dá para recalcular depois */ } }
 }
 async function startUpload() {
   const jobs = [], skipped = [];
@@ -469,6 +488,9 @@ async function startUpload() {
     ids.length ? jobs.push({ f, ids }) : skipped.push(f.webkitRelativePath + ' (pasta não bate com nenhum atleta)');
   });
   const log = $('uplog'); if (!jobs.length) { log.textContent = 'Nada para enviar.\n' + skipped.join('\n'); return; }
+  if (wantFaces() && $('faces-q').value === 'completa') {
+    try { const fa = await Rosto.loadLib(); if (fa.tf.getBackend() === 'cpu' && !confirm('Este navegador está sem aceleração de vídeo, então a qualidade COMPLETA vai ser muito lenta (minutos por foto).\n\nOK = continuar assim mesmo.\nCancelar = usar a qualidade rápida.')) $('faces-q').value = 'rapida'; } catch (_) {}
+  }
   $('up').disabled = true; let done = 0; const fails = [];
   const q = jobs.slice();
   const worker = async () => { while (q.length) { const j = q.shift(); log.textContent = `Enviando ${done + fails.length + 1} de ${jobs.length}: ${j.f.name}`;

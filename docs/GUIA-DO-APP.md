@@ -223,3 +223,5 @@ O que seria novo: sessão por cliente (um "evento" por ensaio, com cota COM/SEM 
 - Para ligar na loja: Preços e datas > Busca por selfie. Para testar antes, abra a loja com `?teste` no final do link. "Rigor da busca": 50 é o padrão (menor = mais rígido).
 - Se o reconhecimento falhar, a pessoa continua achando as fotos pelo nome ("Ver as fotos pelo meu nome"). O pacote continua levando só as fotos identificadas por você (a opção "pacote libera fotos Gerais" fica desligada).
 - Migração 0009 (`photo_faces`, `photos.faces_done`). Teste: `test/rosto.test.js`.
+- Qualidade da busca: ao enviar, "Completa" corta a foto em pedaços e acha também gente ao fundo e de longe (bem mais lento; precisa de aceleração de vídeo no navegador), "Rápida" só rostos maiores. "Refazer os rostos das fotos já enviadas" recalcula pela pasta do computador, sem enviar de novo.
+- Resultado da busca: "parecem você" (distância dentro do rigor) e "Talvez sejam você" (um pouco acima; rostos pequenos têm mais folga). Migração 0010 (`photo_faces.w`).

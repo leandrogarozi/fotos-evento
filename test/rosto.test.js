@@ -66,3 +66,23 @@ test('sensibilidade configurável e busca desligada por padrão na loja', async 
   const strict = await (await rosto.onRequestPost({ request: post('/api/rosto', { d: far }), env })).json();
   assert.deepEqual(strict.ids, []);
 });
+
+test('rosto pequeno entra em "talvez", rosto grande não; largura vem do painel', async () => {
+  const env2 = { DB: makeDB(), FOTOS: makeR2(), ADMIN_PASSWORD: 'segredo' };
+  const { token } = await (await login.onRequestPost({ request: post('/l', { password: 'segredo' }), env: env2 })).json();
+  const h = { authorization: 'Bearer ' + token };
+  const add = (id) => env2.DB.prepare("INSERT INTO photos (id, filename, has_orig, has_prev, created_at) VALUES (?, ?, 1, 1, 'x')").bind(id, id + '.jpg').run();
+  const ids = ['aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'cccccccc-cccc-cccc-cccc-cccccccccccc'];
+  for (const i of ids) await add(i);
+  const base = vec();
+  const mid = (a, n) => a.map((x, i) => x + (i < 100 ? 0 : n)); // afasta ~ n*sqrt(28) de a
+  const put = (id, f) => faces.onRequestPost({ params: { id }, request: post('/f', { faces: f }, h), env: env2 });
+  const sure = base.map((x) => x + 0.01);
+  const off = (w) => { const v = [...base]; for (let i = 0; i < 128; i++) v[i] += (i % 2 ? 1 : -1) * 0.0495; return { v, w }; }; // distância ~0,56: acima de 0,50
+  assert.equal((await put(ids[0], [{ v: sure, w: 150 }])).status, 200);
+  assert.equal((await put(ids[1], [off(30)])).status, 200); // longe e pequeno: tolerância maior
+  assert.equal((await put(ids[2], [off(200)])).status, 200); // grande: 0,56 já passa de 0,50+0,05
+  const r = await (await rosto.onRequestPost({ request: post('/api/rosto', { d: base }), env: env2 })).json();
+  assert.deepEqual(r.ids, [ids[0]]);
+  assert.deepEqual(r.maybe, [ids[1]]);
+});

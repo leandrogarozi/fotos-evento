@@ -53,7 +53,7 @@ const faceCard = (e) => (e.faceEnabled || TESTE) ? `<div class="card">
       <button class="go full" id="selfie" style="margin-top:16px">Tirar selfie</button>
       <button class="light full" id="selfie-up" style="margin-top:10px">+ Enviar foto</button>
     </div>` : '';
-const openFace = (e, mode) => Rosto.open({ mode, e: E, athletes: e.athletes, onDone: (ids, a) => { try { sessionStorage.setItem('rosto:' + (E || 'principal'), JSON.stringify(ids)); } catch (_) {} location.href = 'galeria.html?' + (a ? 'a=' + a + '&' : '') + 'r=1' + eand; } });
+const openFace = (e, mode) => Rosto.open({ mode, e: E, athletes: e.athletes, onDone: (ids, a, maybe) => { try { sessionStorage.setItem('rosto:' + (E || 'principal'), JSON.stringify({ ids, maybe: maybe || [] })); } catch (_) {} location.href = 'galeria.html?' + (a ? 'a=' + a + '&' : '') + 'r=1' + eand; } });
 const nameHelp = (e) => 'https://wa.me/' + e.whatsapp + '?text=' + encodeURIComponent('Oi! Não encontrei meu nome na lista de atletas do ' + e.eventName + '.');
 function presaleView(e) {
   $('root').innerHTML = `
