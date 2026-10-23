@@ -349,11 +349,31 @@ function drawFx(n) {
     $('fx-log').textContent = `Pronto: ${ok} de ${ids.length} foto(s) processada(s).`; lp();
   };
 }
+const gb = (b) => { const g = b / 1e9; return (g >= 1 ? g.toFixed(2) : g.toFixed(3)).replace('.', ',') + ' GB'; };
+async function drawStorage() {
+  const el = $('stor'); if (!el) return;
+  try {
+    const s = await api('storage'), pct = s.pct, lvl = pct >= 90 ? 'red' : pct >= 70 ? 'amber' : 'ok';
+    const color = { ok: 'var(--lime)', amber: '#ffb020', red: '#e5484d' }[lvl];
+    const msg = { ok: 'Tudo certo.', amber: 'Atenção: você já usou mais de 70% do espaço grátis. Apague fotos de eventos que já acabaram.', red: 'Perto do limite! Passando de 10 GB a Cloudflare começa a cobrar. Apague fotos que não precisa mais.' }[lvl];
+    const free = Math.max(0, s.limit - s.used), fits = s.avgPerPhoto ? Math.floor(free / s.avgPerPhoto) : 0;
+    el.style.background = lvl === 'ok' ? 'var(--card2)' : lvl === 'amber' ? '#fff3d6' : '#ffe1e1';
+    el.innerHTML = `<div class="row" style="justify-content:space-between;align-items:baseline"><b style="font-size:16px">Espaço usado: ${gb(s.used)} de ${gb(s.limit)} (${String(pct).replace('.', ',')}%)</b><button class="small ghost" id="stor-r">Atualizar</button></div>
+      <div style="height:12px;border-radius:8px;background:#fff;border:1px solid var(--line);overflow:hidden;margin:8px 0"><div style="height:100%;width:${Math.min(100, pct)}%;background:${color}"></div></div>
+      <div style="font-size:13px"><b>${msg}</b> Cabem mais uns <b>${fits.toLocaleString('pt-BR')}</b> fotos (média de ${(s.avgPerPhoto / 1e6).toFixed(1).replace('.', ',')} MB por foto, original e vitrine).</div>
+      <div class="muted" style="font-size:12.5px;margin-top:6px">${s.photos} fotos · originais ${gb(s.originals.bytes)} · vitrine ${gb(s.previews.bytes)}${s.byEvent.length > 1 ? ' · ' + s.byEvent.map(e => esc(e.name) + ': ' + e.photos + ' fotos, ' + gb(e.bytes)).join(' · ') : ''}</div>
+      ${s.orphan.files ? `<div style="font-size:12.5px;margin-top:6px">Sobras de envios que falharam: ${s.orphan.files} arquivo(s), ${gb(s.orphan.bytes)}. <button class="small ghost" id="stor-c">Limpar sobras</button></div>` : ''}
+      <div class="muted" style="font-size:12px;margin-top:6px">Passando dos 10 GB grátis, a Cloudflare cobra cerca de US$ 0,015 por GB ao mês (confira em Cloudflare > R2). Apagar fotos em "Fotos enviadas" libera espaço na hora.</div>`;
+    $('stor-r').onclick = drawStorage;
+    if ($('stor-c')) $('stor-c').onclick = async () => { if (!confirm('Apagar as sobras? São arquivos que não pertencem a nenhuma foto publicada.')) return; try { const r = await api('storage', { action: 'limpar' }); alert(r.files + ' arquivo(s) apagado(s), ' + gb(r.bytes) + ' liberados.'); } catch (e) { alert('Erro: ' + e.message); } drawStorage(); };
+  } catch (e) { el.textContent = 'Não consegui medir o espaço agora (' + e.message + '). Clique em Atualizar mais tarde.'; }
+}
 async function lp() {
   const [d, ev] = await Promise.all([api('photos'), fetch(pub('/api/event')).then(r => r.json()).catch(() => ({}))]);
   athletesCache = d.athletes; if (ev.brandText) brandText = ev.brandText;
   $('photos').innerHTML = `<h2>Fotos (${d.total} publicadas)</h2>
     <p class="muted" style="font-size:13px;margin-bottom:14px">Suba a pasta do evento: dentro dela, uma subpasta por atleta (com o nome dele; "Ana + Bruno" para dois atletas) e uma subpasta chamada <b>Geral</b> para as fotos sem atleta. As fotos Gerais aparecem na galeria de todos os atletas. A original fica privada e a vitrine sai com marca d'água.</p>
+    <div id="stor" class="box" style="margin:0 0 16px">Medindo o espaço...</div>
     <label>Escolha a pasta do evento</label><input type="file" id="folder" webkitdirectory multiple>
     <details style="margin-top:12px"><summary class="muted" style="cursor:pointer;font-size:13px">Ou envie fotos soltas (vão para a Triagem, onde você diz de quem são)</summary>
       <label>Escolha as fotos (JPG)</label><input type="file" id="files" accept="image/jpeg" multiple>
@@ -372,6 +392,7 @@ async function lp() {
     <div id="pm-bar" class="row" style="margin-top:12px"></div>
     <div id="pm-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:14px"></div>`;
   $('up').onclick = startUpload;
+  drawStorage();
   $('redo-go').onclick = redoFaces;
   drawFx(d.facesPending);
   $('pm-ath').onchange = pmLoad;

@@ -230,3 +230,7 @@ O que seria novo: sessão por cliente (um "evento" por ensaio, com cota COM/SEM 
 - Paleta: branco predominante, verde-limão `#A2FF01`, preto `#141414`, cinza `#434343`. Fontes: Anton (títulos) e Figtree (textos). Tudo definido em `public/style.css` (vale para o site e o painel).
 - Página inicial (`public/index.html`): capa com as 4 fotos de `public/capa/1.jpg` a `4.jpg` (masculina, feminina, masculina, feminina), girando a cada 5,5 s. Para trocar uma foto, substitua o arquivo com o mesmo nome (JPG, uns 1800 px de largura) e publique.
 - Textos da capa: Preços e datas > Textos do site > "Página inicial (capa)". O Instagram do rodapé vem de Preços e datas > Evento.
+
+## Espaço usado (aba Fotos do painel)
+- Mede o armazenamento (R2) de verdade: total usado, % dos 10 GB grátis, originais x vitrine, por evento, e quantas fotos ainda cabem. Amarelo a partir de 70%, vermelho a partir de 90%. Atualiza ao abrir a aba, ao apagar fotos e no botão Atualizar.
+- "Limpar sobras" apaga arquivos que não pertencem a nenhuma foto do banco (envios que falharam). Endpoint: `GET/POST /api/admin/storage`.

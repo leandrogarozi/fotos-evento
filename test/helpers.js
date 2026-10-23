@@ -24,6 +24,11 @@ export function makeR2() {
     store,
     put: async (k, body, opts) => { store.set(k, { buf: new Uint8Array(await new Response(body).arrayBuffer()), opts }); },
     get: async (k) => (store.has(k) ? { body: new Response(store.get(k).buf).body, httpMetadata: store.get(k).opts && store.get(k).opts.httpMetadata } : null),
+    list: async ({ prefix = '', cursor, limit = 1000 } = {}) => {
+      const all = [...store].filter(([k]) => k.startsWith(prefix)).map(([key, v]) => ({ key, size: v.buf.length }));
+      const start = Number(cursor) || 0, page = all.slice(start, start + limit);
+      return { objects: page, truncated: start + limit < all.length, cursor: String(start + limit) };
+    },
     delete: async (k) => { for (const key of [].concat(k)) store.delete(key); },
   };
 }
