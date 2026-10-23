@@ -13,8 +13,12 @@ export async function onRequestGet({ request, env }) {
      WHERE a.event_id = ? GROUP BY a.id`
   ).bind(ev.id).all();
   const total = await env.DB.prepare('SELECT COUNT(*) AS n FROM photos WHERE has_orig = 1 AND has_prev = 1 AND event_id = ?').bind(ev.id).first();
+  // Fotos prontas ainda sem os rostos calculados (busca por selfie). ?pendingFaces=1 devolve os ids.
+  const pend = await env.DB.prepare('SELECT id FROM photos WHERE has_orig = 1 AND has_prev = 1 AND faces_done = 0 AND event_id = ? ORDER BY filename LIMIT 2000').bind(ev.id).all();
   return json({
     total: total.n,
+    facesPending: pend.results.length,
+    pendingIds: new URL(request.url).searchParams.get('pendingFaces') ? pend.results.map((r) => r.id) : undefined,
     athletes: results.sort((a, b) => a.turma_order - b.turma_order || a.name.localeCompare(b.name, 'pt-BR'))
       .map(({ id, name, turma, n }) => ({ id, name, turma, n })),
   });
@@ -49,6 +53,7 @@ export async function onRequestPost({ request, env }) {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM order_photos WHERE photo_id IN (SELECT value FROM json_each(?))').bind(js),
     env.DB.prepare('DELETE FROM photo_athletes WHERE photo_id IN (SELECT value FROM json_each(?))').bind(js),
+    env.DB.prepare('DELETE FROM photo_faces WHERE photo_id IN (SELECT value FROM json_each(?))').bind(js),
     env.DB.prepare('DELETE FROM photos WHERE id IN (SELECT value FROM json_each(?))').bind(js),
   ]);
   return json({ deleted: ids.length });

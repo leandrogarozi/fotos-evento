@@ -36,6 +36,7 @@ button.small,.btn.small{min-height:30px;padding:0 12px;font-size:12px}
   <div class="card" id="link" style="display:none"></div>
 </div>
 </div>
+<script src="rosto.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -184,6 +185,10 @@ const FIELDS = [
   ['txt_gallery_title', 'Galeria geral: título', 'textline'], ['txt_gallery_title_athlete', 'Galeria de um atleta: título ({nome} = nome do atleta)', 'textline'], ['txt_gallery_lead', 'Galeria: texto', 'textarea'],
   ['txt_claim_title', 'Marcar minhas fotos: título', 'textline'], ['txt_claim_lead', 'Marcar minhas fotos: texto', 'textarea'],
   ['txt_closed_title', 'Vendas encerradas: título', 'textline'], ['txt_closed_lead', 'Vendas encerradas: texto', 'textarea'],
+  ['Busca por selfie','Mostra "Buscar pelo meu rosto" na loja. Teste antes pelo link da loja com ?teste no final. Só números do rosto ficam guardados, nunca a selfie.'],
+  ['face_enabled', 'Busca por selfie na loja', 'toggle'], ['face_dist', 'Rigor da busca (50 = padrão; menor = mais rígido, maior = acha mais fotos e erra mais)', 'number'],
+  ['Fotos gerais'],
+  ['pack_includes_general', 'O pacote completo também libera as fotos da pasta Geral? (Desligado: o pacote leva só as fotos do atleta; as gerais ele compra avulsas)', 'toggle'],
   ['Marcação de fotos'],
   ['claim_enabled', 'Quem comprou o pacote pode marcar fotos suas na galeria geral? (Desligado é mais seguro: o pacote só libera as fotos que você identificou)', 'toggle'],
   ['claim_max', 'Se ligado: limite de fotos que cada pessoa pode marcar (0 = sem limite)', 'number'],
@@ -310,25 +315,55 @@ async function tqGeral() {
 // ---------- Fotos: upload com marca d'água gerada aqui no navegador ----------
 const norm = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 let athletesCache = [], brandText = 'Leandro Garozi Fotografia';
+function drawFx(n) {
+  const el = $('fx'); if (!el) return;
+  if (!n) { el.style.display = 'none'; return; }
+  el.style.display = ''; el.innerHTML = `<b>${n}</b> foto${n > 1 ? 's' : ''} sem rostos calculados (busca por selfie). <button class="small" id="fx-go" style="margin-left:8px">Calcular agora</button><div class="muted" id="fx-log" style="font-size:12px;margin-top:6px"></div>`;
+  $('fx-go').onclick = async () => {
+    $('fx-go').disabled = true; const ids = (await api('photos?pendingFaces=1')).pendingIds || []; let ok = 0;
+    for (let i = 0; i < ids.length; i++) {
+      $('fx-log').textContent = `Calculando ${i + 1} de ${ids.length}...`;
+      try {
+        const r = await fetch('/img/' + ids[i]); const c = await Rosto.fileToCanvas(await r.blob(), 1200);
+        await saveFaces(ids[i], await faceVecs(c)); ok++;
+      } catch (_) { /* tenta de novo da próxima vez */ }
+    }
+    $('fx-log').textContent = `Pronto: ${ok} de ${ids.length} foto(s) processada(s).`; lp();
+  };
+}
 async function lp() {
   const [d, ev] = await Promise.all([api('photos'), fetch(pub('/api/event')).then(r => r.json()).catch(() => ({}))]);
   athletesCache = d.athletes; if (ev.brandText) brandText = ev.brandText;
   $('photos').innerHTML = `<h2>Fotos (${d.total} publicadas)</h2>
-    <p class="muted" style="font-size:13px;margin-bottom:14px">Envie os JPGs editados: todos entram na galeria. A original fica privada e a vitrine sai com marca d'água no meio. Depois, em "Fotos enviadas" abaixo, você pode selecionar fotos e atribuir a um atleta, se souber quem é.</p>
-    <label>Escolha as fotos (JPG). Todas entram na galeria.</label><input type="file" id="files" accept="image/jpeg" multiple>
-    <details style="margin-top:14px"><summary class="muted" style="cursor:pointer;font-size:13px">Avançado: já tenho as fotos separadas em pastas por atleta</summary>
-      <label>Escolha a pasta (o nome de cada subpasta tem que ser o nome do atleta; "Ana + Bruno" para dois atletas; "Geral" para sem atleta)</label><input type="file" id="folder" webkitdirectory multiple>
+    <p class="muted" style="font-size:13px;margin-bottom:14px">Suba a pasta do evento: dentro dela, uma subpasta por atleta (com o nome dele; "Ana + Bruno" para dois atletas) e uma subpasta chamada <b>Geral</b> para as fotos sem atleta. As fotos Gerais aparecem na galeria de todos os atletas. A original fica privada e a vitrine sai com marca d'água.</p>
+    <label>Escolha a pasta do evento</label><input type="file" id="folder" webkitdirectory multiple>
+    <details style="margin-top:12px"><summary class="muted" style="cursor:pointer;font-size:13px">Ou envie fotos soltas (vão para a Triagem, onde você diz de quem são)</summary>
+      <label>Escolha as fotos (JPG)</label><input type="file" id="files" accept="image/jpeg" multiple>
     </details>
-    <button class="full" id="up">Enviar fotos</button>
+    <label style="display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--ink)"><input type="checkbox" id="faces-on" checked style="margin-top:3px"><span>Preparar a busca por selfie (calcula os rostos de cada foto neste computador; deixa o envio um pouco mais lento)</span></label>
+    <button class="full" id="up" style="margin-top:12px">Enviar fotos</button>
     <div id="uplog" class="muted" style="font-size:13px;margin-top:12px;white-space:pre-line"></div>
+    <div id="fx" class="box" style="margin-top:14px;display:none"></div>
     <h2 style="margin-top:30px">Fotos enviadas</h2>
     <select id="pm-ath"><option value="">Escolha o atleta para ver as fotos</option><option value="todas">Todas as fotos</option><option value="geral">Fotos gerais (sem atleta)</option>${d.athletes.map(a => `<option value="${a.id}">${esc(a.name)} (${a.n})</option>`).join('')}</select>
     <div id="pm-bar" class="row" style="margin-top:12px"></div>
     <div id="pm-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:14px"></div>`;
   $('up').onclick = startUpload;
+  drawFx(d.facesPending);
   $('pm-ath').onchange = pmLoad;
 
 }
+// Rostos da foto (busca por selfie): números calculados aqui no navegador; nada de imagem vai para o banco.
+async function faceVecs(canvas) {
+  const f = await Rosto.loadLib();
+  const r = await f.detectAllFaces(canvas, new f.TinyFaceDetectorOptions({ inputSize: 608, scoreThreshold: 0.4 })).withFaceLandmarks().withFaceDescriptors();
+  return r.filter(x => x.detection.box.width >= 28).sort((a, b) => b.detection.box.area - a.detection.box.area).slice(0, 8).map(x => Array.from(x.descriptor));
+}
+async function saveFaces(id, vecs) {
+  const r = await fetch(`/api/admin/photo/${id}/faces`, { method: 'POST', headers: { authorization: 'Bearer ' + tok, 'content-type': 'application/json' }, body: JSON.stringify({ faces: vecs }) });
+  if (!r.ok) throw new Error('faces ' + r.status);
+}
+const wantFaces = () => !!($('faces-on') && $('faces-on').checked);
 let logoImg;
 async function loadLogo() {
   if (logoImg !== undefined) return logoImg;
@@ -349,6 +384,8 @@ async function makePreview(file) {
   const w = Math.round(bw * scale), h = Math.round(bh * scale);
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d'); g.drawImage(bmp, 0, 0, w, h);
+  let faces = null;
+  if (wantFaces()) { try { faces = await faceVecs(c); } catch (_) { faces = null; } } // antes da marca d'água
   const logo = await loadLogo();
   g.save(); g.translate(w / 2, h / 2); g.rotate(-Math.PI / 7);
   const diag = Math.hypot(w, h);
@@ -362,7 +399,8 @@ async function makePreview(file) {
     for (let y = -diag, r = 0; y < diag; y += fs * 4, r++) for (let x = -diag + (r % 2) * tw * 0.6; x < diag; x += tw * 1.5) g.fillText(brandText, x, y);
   }
   g.restore(); bmp.close && bmp.close();
-  return new Promise(res => c.toBlob(res, 'image/jpeg', 0.7));
+  const blob = await new Promise(res => c.toBlob(res, 'image/jpeg', 0.7));
+  blob.faces = faces; return blob;
 }
 let pmIds = [], pmSel = new Set();
 async function pmLoad() {
@@ -414,18 +452,19 @@ const put = async (id, kind, body) => {
   const r = await fetch(`/api/admin/photo/${id}/${kind}`, { method: 'PUT', headers: { authorization: 'Bearer ' + tok, 'content-type': 'image/jpeg' }, body });
   if (!r.ok) { let t = ''; try { t = (await r.text()).slice(0, 200); } catch (_) {} throw new Error('falha ao enviar ' + kind + ' (' + r.status + '): ' + t); }
 };
-async function sendOne(file, athleteIds, geral) {
+async function sendOne(file, athleteIds, geral, triaged) {
   const prev = await makePreview(file);
-  const { id } = await api('photo', { filename: file.name, athleteIds, geral: !!geral });
+  const { id } = await api('photo', { filename: file.name, athleteIds, geral: !!geral, triaged: !!triaged });
   try { await put(id, 'prev', prev); await put(id, 'orig', file); }
   catch (e) { await fetch('/api/admin/photo/' + id, { method: 'DELETE', headers: { authorization: 'Bearer ' + tok } }); throw e; }
+  if (prev.faces) { try { await saveFaces(id, prev.faces); } catch (_) { /* fica como pendente; dá para recalcular depois */ } }
 }
 async function startUpload() {
   const jobs = [], skipped = [];
-  [...$('files').files].forEach(f => jobs.push({ f, ids: [], geral: true }));
+  [...$('files').files].forEach(f => jobs.push({ f, ids: [], geral: true, triaged: false }));
   [...$('folder').files].filter(f => /image\/jpeg/.test(f.type)).forEach(f => {
     const parts = (f.webkitRelativePath || '').split('/'); const folder = parts[parts.length - 2] || '';
-    if (norm(folder) === 'geral') { jobs.push({ f, ids: [], geral: true }); return; }
+    if (norm(folder) === 'geral') { jobs.push({ f, ids: [], geral: true, triaged: true }); return; }
     const ids = folder.split('+').map(n => athletesCache.find(a => norm(a.name) === norm(n))).filter(Boolean).map(a => a.id);
     ids.length ? jobs.push({ f, ids }) : skipped.push(f.webkitRelativePath + ' (pasta não bate com nenhum atleta)');
   });
@@ -433,7 +472,7 @@ async function startUpload() {
   $('up').disabled = true; let done = 0; const fails = [];
   const q = jobs.slice();
   const worker = async () => { while (q.length) { const j = q.shift(); log.textContent = `Enviando ${done + fails.length + 1} de ${jobs.length}: ${j.f.name}`;
-    try { await sendOne(j.f, j.ids, j.geral); } catch (e) { try { await sendOne(j.f, j.ids, j.geral); } catch (e2) { fails.push(j.f.name + ' → ' + (e2 && e2.message || e2)); continue; } } done++; } };
+    try { await sendOne(j.f, j.ids, j.geral, j.triaged); } catch (e) { try { await sendOne(j.f, j.ids, j.geral, j.triaged); } catch (e2) { fails.push(j.f.name + ' → ' + (e2 && e2.message || e2)); continue; } } done++; } };
   await Promise.all([worker(), worker()]);
   log.textContent = `Pronto: ${done} enviada(s).` + (fails.length ? `\nFalharam:\n${fails.join('\n')}` : '') + (skipped.length ? `\nIgnoradas:\n${skipped.join('\n')}` : '');
   $('up').disabled = false; lp().then(() => { $('uplog').textContent = log.textContent; });

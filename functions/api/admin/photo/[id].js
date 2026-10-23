@@ -8,6 +8,7 @@ export async function onRequestDelete({ params, request, env }) {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM order_photos WHERE photo_id = ?').bind(params.id),
     env.DB.prepare('DELETE FROM photo_athletes WHERE photo_id = ?').bind(params.id),
+    env.DB.prepare('DELETE FROM photo_faces WHERE photo_id = ?').bind(params.id),
     env.DB.prepare('DELETE FROM photos WHERE id = ?').bind(params.id),
   ]);
   return json({ ok: true });

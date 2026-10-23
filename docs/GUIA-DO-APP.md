@@ -215,3 +215,11 @@ O que seria novo: sessão por cliente (um "evento" por ensaio, com cota COM/SEM 
 - Fotos adicionais: botão na página do pedido, R$ por foto, vira um pedido novo ligado ao pacote (mesma senha).
 - Na galeria (depois da pré-venda) o carrinho cobra o menor valor entre pacote + adicionais e as fotos avulsas.
 - O limite vale no pedido pela regra da hora da compra (coluna `orders.pack_limit`, migração 0008): mudar o limite não altera quem já comprou.
+
+## Busca por selfie (reconhecimento de rosto)
+- Roda no celular da pessoa (biblioteca aberta face-api, em `public/vendor/`). A selfie NUNCA vai para o servidor: só os 128 números do rosto (`POST /api/rosto`). No banco ficam só números (`photo_faces`), nunca imagens.
+- No painel, ao enviar fotos (aba Fotos), a caixa "Preparar a busca por selfie" calcula os rostos de cada foto no computador. Fotos antigas sem rostos aparecem num aviso com o botão "Calcular agora".
+- Enviar a pasta do evento: subpasta com o nome do atleta (ou "Ana + Bruno") e uma subpasta "Geral". Fotos soltas vão para a Triagem. As fotos Gerais aparecem na galeria de todos os atletas ("Fotos gerais do evento").
+- Para ligar na loja: Preços e datas > Busca por selfie. Para testar antes, abra a loja com `?teste` no final do link. "Rigor da busca": 50 é o padrão (menor = mais rígido).
+- Se o reconhecimento falhar, a pessoa continua achando as fotos pelo nome ("Ver as fotos pelo meu nome"). O pacote continua levando só as fotos identificadas por você (a opção "pacote libera fotos Gerais" fica desligada).
+- Migração 0009 (`photo_faces`, `photos.faces_done`). Teste: `test/rosto.test.js`.

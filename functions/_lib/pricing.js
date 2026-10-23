@@ -29,6 +29,9 @@ export const DEFAULTS = {
   pack_extra_cents: 0,
   presale_limit: 0, // na pré-venda
   presale_extra_cents: 0,
+  // Busca por rosto (selfie): 1 = aparece na loja. face_dist: distância máxima (50 = 0,50); menor = mais rígido.
+  face_enabled: 0,
+  face_dist: 50,
   // Encerramento das vendas: data fixa (sales_end) ou N dias depois de published_at (sales_days).
   sales_end: '',
   sales_days: 0,
@@ -50,7 +53,7 @@ export const DEFAULTS = {
 
 export const NUMERIC_KEYS = [
   'presale_price_cents', 'price_one_cents', 'price_four_cents',
-  'price_all_event_cents', 'price_all_late_cents', 'late_after_days', 'price_box_cents', 'claim_max', 'claim_enabled', 'pack_includes_general', 'sales_days', 'pack_limit', 'pack_extra_cents', 'presale_limit', 'presale_extra_cents',
+  'price_all_event_cents', 'price_all_late_cents', 'late_after_days', 'price_box_cents', 'claim_max', 'claim_enabled', 'pack_includes_general', 'sales_days', 'pack_limit', 'pack_extra_cents', 'presale_limit', 'presale_extra_cents', 'face_enabled', 'face_dist',
 ];
 
 export function mergeConfig(rows) {

@@ -6,6 +6,7 @@
 <div class="top wrap" style="padding-bottom:0"><span class="logo">LEANDRO GAROZI</span><a class="chip" href="acesso.html" style="text-decoration:none;color:var(--ink)">Já comprei</a></div>
 <div class="wrap" id="root"><p class="muted" style="margin-top:40px">Carregando...</p></div>
 <script src="pin.js"></script>
+<script src="rosto.js"></script>
 <script src="txt.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -43,6 +44,16 @@ const options = (e) => {
   const g = {}; e.athletes.forEach((a) => (g[a.turma || 'Outros'] = g[a.turma || 'Outros'] || []).push(a));
   return Object.keys(g).map((t) => `<optgroup label="Turma ${esc(t)}">${g[t].map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</optgroup>`).join('');
 };
+const TESTE = new URLSearchParams(location.search).has('teste'); // ?teste mostra a busca por rosto mesmo desligada
+const faceCard = (e) => (e.faceEnabled || TESTE) ? `<div class="card">
+      <div class="row" style="gap:14px;flex-wrap:nowrap;align-items:center">
+        <div style="width:56px;height:56px;border-radius:16px;background:var(--card2);display:grid;place-items:center;flex:none"><svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 10V6a2 2 0 0 1 2-2h4M20 4h4a2 2 0 0 1 2 2v4M26 20v4a2 2 0 0 1-2 2h-4M10 26H6a2 2 0 0 1-2-2v-4"/><circle cx="15" cy="13" r="4"/><path d="M8 22c1-3 4-5 7-5s6 2 7 5"/></svg></div>
+        <div><h2 style="font-size:20px;margin:0 0 2px">Buscar pelo meu rosto</h2><div class="muted" style="font-size:14px">Tire uma <b>selfie</b> ou envie uma <b>foto</b> sua e eu acho suas fotos.</div></div>
+      </div>
+      <button class="go full" id="selfie" style="margin-top:16px">Tirar selfie</button>
+      <button class="light full" id="selfie-up" style="margin-top:10px">+ Enviar foto</button>
+    </div>` : '';
+const openFace = (e, mode) => Rosto.open({ mode, e: E, athletes: e.athletes, onDone: (ids, a) => { try { sessionStorage.setItem('rosto:' + (E || 'principal'), JSON.stringify(ids)); } catch (_) {} location.href = 'galeria.html?' + (a ? 'a=' + a + '&' : '') + 'r=1' + eand; } });
 const nameHelp = (e) => 'https://wa.me/' + e.whatsapp + '?text=' + encodeURIComponent('Oi! Não encontrei meu nome na lista de atletas do ' + e.eventName + '.');
 function presaleView(e) {
   $('root').innerHTML = `
@@ -103,6 +114,7 @@ function storeView(e) {
     <h1>${tTitle(e.texts.txt_store_title)}</h1>
     <p class="lead">${tLead(e.texts.txt_store_lead)}</p>
     ${salesBox(e)}
+    ${faceCard(e)}
     <div class="card">
       <label>Seu nome na lista</label>
       <select id="athlete"><option value="">Escolha o atleta</option>${options(e)}</select>
@@ -121,6 +133,7 @@ function storeView(e) {
       ${dl.until ? `<div class="box sage">Pacote completo por ${reais(e.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}. <span id="count" class="chip" style="margin-left:6px"></span></div>` : ''}
     </div>`;
   until = dl.until; tick();
+  if ($('selfie')) { $('selfie').onclick = () => openFace(e, 'cam'); $('selfie-up').onclick = () => openFace(e, 'up'); }
   $('see').onclick = () => { const a = $('athlete').value; if (a) location.href = 'galeria.html?a=' + a + eand; else $('athlete').focus(); };
 }
 fetch('/api/event' + eq).then((r) => r.json()).then((e) => {
