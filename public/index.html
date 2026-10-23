@@ -101,12 +101,14 @@ function tick() {
   el.textContent = `Termina em ${d ? d + 'd ' : ''}${h}h ${m}min`;
 }
 function tickCd() {
-  const el = $('cd'); if (!el) return;
-  const ms = Date.parse(el.dataset.until) - Date.now();
-  if (ms <= 0) { location.reload(); return; }
-  const v = { d: Math.floor(ms / 864e5), h: Math.floor(ms % 864e5 / 36e5), m: Math.floor(ms % 36e5 / 6e4), s: Math.floor(ms % 6e4 / 1e3) };
-  for (const k in v) { const n = $('cd-' + k); if (n) n.textContent = String(v[k]).padStart(2, '0'); }
+  document.querySelectorAll('[data-until]').forEach((el) => {
+    const ms = Date.parse(el.dataset.until) - Date.now();
+    if (ms <= 0) { location.reload(); return; }
+    const v = { d: Math.floor(ms / 864e5), h: Math.floor(ms % 864e5 / 36e5), m: Math.floor(ms % 36e5 / 6e4), s: Math.floor(ms % 6e4 / 1e3) };
+    el.querySelectorAll('[data-k]').forEach((n) => { n.textContent = String(v[n.dataset.k]).padStart(2, '0'); });
+  });
 }
+const cdRow = () => `<div class="cdrow"><div class="cdb"><b data-k="d">00</b><span>dias</span></div><div class="cdb"><b data-k="h">00</b><span>horas</span></div><div class="cdb"><b data-k="m">00</b><span>min</span></div><div class="cdb"><b data-k="s">00</b><span>seg</span></div></div>`;
 function tickSales() {
   const el = $('sc'); if (!el || !ev || !ev.salesEnd) return;
   const ms = Date.parse(ev.salesEnd) - Date.now();
@@ -114,7 +116,7 @@ function tickSales() {
   const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
   el.textContent = `faltam ${d ? d + (d > 1 ? ' dias ' : ' dia ') : ''}${h}h ${m}min`;
 }
-const salesBox = (e) => e.salesEnd ? `<div class="box sage" style="margin-top:28px;font-size:16px;text-align:center"><b>Vendas encerram em ${fmt(e.salesEnd)}</b><br><span id="sc" style="font-size:14px"></span><br><span style="font-size:13px">Depois dessa data não será possível comprar.</span></div>` : '';
+const salesBox = (e) => e.salesEnd ? `<div class="cdbox" style="margin-top:28px" data-until="${esc(e.salesEnd)}"><p><b>Vendas encerram em ${fmt(e.salesEnd)}</b>. Depois dessa data não será possível comprar.</p>${cdRow()}</div>` : '';
 const faceOn = (e) => e.faceEnabled || TESTE;
 const logo = '<span class="logo">LEANDRO <b>GAROZI</b></span>';
 const dateBR = (e) => { const d = String(e.eventDate || '').split('-'); return d.length === 3 ? d[2] + '/' + d[1] : ''; };
@@ -211,8 +213,7 @@ function storeView(e) {
     <section class="s"><div class="page"><div class="ey">Valores</div><h2 class="h2s">Quanto <em>custa</em></h2>
       <p class="sub">Você paga só pelas fotos que escolher. Quanto mais fotos, mais barato cada uma.</p>
       <div class="pcs">${tierCards(e)}${packCards({ limit: e.packLimit, extra: e.packExtra }, e.allPrice)}</div>
-      ${dl.until ? `<div class="cdbox" id="cd" data-until="${esc(dl.until)}"><p>Pacote completo por <b>${reais(e.allPrice)}</b> até ${fmt(dl.until)}. Depois, <b>${reais(dl.next)}</b>.</p>
-      <div class="cdrow"><div class="cdb"><b id="cd-d">00</b><span>dias</span></div><div class="cdb"><b id="cd-h">00</b><span>horas</span></div><div class="cdb"><b id="cd-m">00</b><span>min</span></div><div class="cdb"><b id="cd-s">00</b><span>seg</span></div></div></div>` : ''}</div></section>
+      ${dl.until ? `<div class="cdbox" data-until="${esc(dl.until)}"><p>Pacote completo por <b>${reais(e.allPrice)}</b> até ${fmt(dl.until)}. Depois, <b>${reais(dl.next)}</b>.</p>${cdRow()}</div>` : ''}</div></section>
     ${face ? `<div class="page"><div class="selfb"><div><div class="ey" style="color:var(--lime)">Busca por rosto</div><h2>Sua selfie <em>acha tudo</em></h2>
       <p>Nada de ficar rolando centenas de fotos. Tire uma selfie e a gente mostra as fotos em que você aparece, inclusive as de longe.</p>
       <div class="btns"><a class="hb p" id="selfie">◉ Tirar selfie</a><a class="hb o" id="selfie-up">+ Enviar foto</a></div>
