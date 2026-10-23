@@ -42,7 +42,8 @@ section.s{padding:52px 0 0}
 .gg{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:22px}
 .gg a{position:relative;display:block;aspect-ratio:4/5;border-radius:16px;overflow:hidden;background:var(--card)}
 .gg img{width:100%;height:100%;object-fit:cover;display:block}
-.pcs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:24px}
+.pcs{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:26px}
+.pcs .pc{flex:1 1 190px;max-width:250px}
 .pc{border-radius:22px;padding:22px;background:#fff;border:1.5px solid var(--line)}
 .pc .q{font:400 22px Anton;text-transform:uppercase;letter-spacing:.03em}
 .pc .v{font:400 48px/1.05 Anton;margin:8px 0 4px;white-space:nowrap}
@@ -62,9 +63,12 @@ section.s{padding:52px 0 0}
 .foot .logo{color:#fff}.foot .logo b{color:var(--lime);font-weight:400}.foot a{color:#fff}
 .narrow{max-width:620px}
 .card.hl{border:2px solid var(--ink)}
+.namecard{border:2px solid var(--ink);border-radius:26px;padding:28px;display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
+.namecard h2{font-size:clamp(30px,5vw,44px);margin:0 0 6px}
+.namecard .go{margin-top:14px}
 @media(max-width:760px){
  .hero{min-height:640px}.steps3{grid-template-columns:1fr}.gg{grid-template-columns:repeat(2,1fr)}
- .selfb{grid-template-columns:1fr;padding:26px 22px}.band div{font-size:16px;gap:16px}.btns .hb{flex:1;min-width:46%}
+ .selfb,.namecard{grid-template-columns:1fr}.selfb{padding:26px 22px}.band div{font-size:16px;gap:16px}.btns .hb{flex:1;min-width:46%}
 }
 </style>
 </head><body>
@@ -95,7 +99,7 @@ function tickSales() {
   const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
   el.textContent = `faltam ${d ? d + (d > 1 ? ' dias ' : ' dia ') : ''}${h}h ${m}min`;
 }
-const salesBox = (e) => e.salesEnd ? `<div class="box sage" style="margin-top:28px;font-size:16px"><b>Vendas encerram em ${fmt(e.salesEnd)}</b><br><span id="sc" style="font-size:14px"></span><br><span style="font-size:13px">Depois dessa data não será possível comprar.</span></div>` : '';
+const salesBox = (e) => e.salesEnd ? `<div class="box sage" style="margin-top:28px;font-size:16px;text-align:center"><b>Vendas encerram em ${fmt(e.salesEnd)}</b><br><span id="sc" style="font-size:14px"></span><br><span style="font-size:13px">Depois dessa data não será possível comprar.</span></div>` : '';
 const faceOn = (e) => e.faceEnabled || TESTE;
 const logo = '<span class="logo">LEANDRO <b>GAROZI</b></span>';
 const dateBR = (e) => { const d = String(e.eventDate || '').split('-'); return d.length === 3 ? d[2] + '/' + d[1] : ''; };
@@ -105,7 +109,7 @@ const options = (e) => {
 };
 const nameHelp = (e) => 'https://wa.me/' + e.whatsapp + '?text=' + encodeURIComponent('Oi! Não encontrei meu nome na lista de atletas do ' + e.eventName + '.');
 const tierCards = (e) => (e.tiers || []).map((t) => `<div class="pc"><div class="q">${t.n} foto${t.n > 1 ? 's' : ''}</div><div class="v">${reais(t.cents)}</div><small>${t.n > 1 ? reais(Math.round(t.cents / t.n)) + ' cada' : 'Avulsa'}</small></div>`).join('');
-const packCards = (L, price) => `<div class="pc hot"><span class="bdg">Pacote completo</span><div class="q">${L && L.limit ? 'Até ' + L.limit + ' fotos' : 'Todas as fotos'}</div><div class="v">${reais(price)}</div><small>${L && L.limit ? 'Do atleta' : 'Do atleta, sem limite'}</small></div>${L && L.limit ? `<div class="pc"><div class="q">Foto adicional</div><div class="v">${reais(L.extra)}</div><small>Acima de ${L.limit} fotos</small></div>` : ''}`;
+const packCards = (L, price) => `<div class="pc hot"><span class="bdg">Pacote completo</span><div class="q">${L && L.limit ? 'Até ' + L.limit + ' fotos' : 'Todas as fotos'}</div><div class="v">${reais(price)}</div><small>${L && L.limit ? 'Foto adicional na compra do pacote: <b style="color:var(--lime)">' + reais(L.extra) + '</b> cada' : 'Do atleta, sem limite'}</small></div>`;
 
 const steps = (items) => `<section class="s"><div class="page"><div class="ey">Passo a passo</div><h2 class="h2s">Como <em>funciona</em></h2>
   <div class="steps3">${items.map((x, i) => `<div class="st"><div class="n">${i + 1}</div><h3>${x[0]}</h3><p>${x[1]}</p></div>`).join('')}</div></div></section>`;
@@ -192,18 +196,18 @@ function storeView(e) {
     <section class="s"><div class="page"><div class="ey">Valores</div><h2 class="h2s">Quanto <em>custa</em></h2>
       <p class="sub">Você paga só pelas fotos que escolher. Quanto mais fotos, mais barato cada uma.</p>
       <div class="pcs">${tierCards(e)}${packCards({ limit: e.packLimit, extra: e.packExtra }, e.allPrice)}</div>
-      ${dl.until ? `<div class="box sage" style="max-width:640px">Pacote completo por ${reais(e.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}. <span id="count" class="chip" style="margin-left:6px"></span></div>` : ''}</div></section>
+      ${dl.until ? `<div class="box sage" style="text-align:center;margin-top:18px">Pacote completo por ${reais(e.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}. <span id="count" class="chip" style="margin-left:6px"></span></div>` : ''}</div></section>
     ${face ? `<div class="page"><div class="selfb"><div><div class="ey" style="color:var(--lime)">Busca por rosto</div><h2>Sua selfie <em>acha tudo</em></h2>
       <p>Nada de ficar rolando centenas de fotos. Tire uma selfie e a gente mostra as fotos em que você aparece, inclusive as de longe.</p>
       <div class="btns"><a class="hb p" id="selfie">◉ Tirar selfie</a><a class="hb o" id="selfie-up">+ Enviar foto</a></div>
       <div class="priv">🔒 Sua foto não é guardada e não sai do seu celular. Só números do rosto são comparados.</div></div>
       <div class="cam"><div class="ov"></div></div></div></div>` : ''}
-    <section class="s" id="nome"><div class="page narrow"><div class="card hl" style="margin-top:0"><h2>Escolha seu nome</h2>
-      <label>Seu nome na lista</label>
+    <section class="s" id="nome"><div class="page"><div class="namecard"><div><div class="ey">Suas fotos</div><h2>Escolha seu <em>nome</em></h2><p class="sub">Encontre seu nome na lista e veja as fotos separadas para você.</p></div>
+      <div><label>Seu nome na lista</label>
       <select id="athlete"><option value="">Escolha o atleta</option>${options(e)}</select>
       <div class="hint-small">Não achou o nome? <a href="${nameHelp(e)}" target="_blank" style="font-weight:700;color:var(--ink)">Fale comigo</a>.</div>
       <button class="go full" id="see">Ver minhas fotos</button>
-      <a class="btn light full" style="width:100%;margin-top:12px" href="galeria.html${eq}">Ver todas as fotos</a>
+      <a class="btn light full" style="width:100%;margin-top:12px" href="galeria.html${eq}">Ver todas as fotos</a></div>
     </div></div></section>` + have() + footer(e);
   until = dl.until; tick(); startSlides();
   $('h-name').onclick = () => scrollTo('nome');
