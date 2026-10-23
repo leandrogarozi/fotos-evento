@@ -8,6 +8,7 @@ body{background:#fff}
 /* capa */
 .hero{position:relative;min-height:min(86vh,720px);background:var(--ink);color:#fff;overflow:hidden;display:flex;align-items:flex-end}
 .slides{position:absolute;inset:0}
+.slides picture{display:contents}
 .slides img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.04);transition:opacity 1.2s ease,transform 7s ease-out}
 .slides img.on{opacity:1;transform:scale(1)}
 .shade{position:absolute;inset:0;background:linear-gradient(0deg,rgba(20,20,20,.92) 0,rgba(20,20,20,.5) 42%,rgba(20,20,20,.12) 100%),linear-gradient(90deg,rgba(20,20,20,.55) 0,rgba(20,20,20,0) 62%)}
@@ -74,7 +75,13 @@ section.s{padding:52px 0 0}
 .namecard h2{font-size:clamp(30px,5vw,44px);margin:0 0 6px}
 .namecard .go{margin-top:14px}
 @media(max-width:760px){
- .hero{min-height:640px}.steps3{grid-template-columns:1fr}.gg{grid-template-columns:repeat(2,1fr)}
+ .hero{display:block;min-height:0}
+ .slides{position:relative;inset:auto;width:100%;aspect-ratio:4/5}
+ .slides{overflow:hidden}
+ .slides::after{content:'';position:absolute;inset:0 0 -2px;z-index:2;background:linear-gradient(0deg,#141414 0,rgba(20,20,20,.0) 34%),linear-gradient(180deg,rgba(20,20,20,.55) 0,rgba(20,20,20,0) 22%)}
+ .shade{display:none}
+ .hero .in{margin-top:-150px;padding-bottom:34px}
+ .steps3{grid-template-columns:1fr}.gg{grid-template-columns:repeat(2,1fr)}
  .selfb,.namecard{grid-template-columns:1fr}.selfb{padding:26px 22px}.band div{font-size:16px;gap:16px}.btns .hb{flex:1;min-width:46%}
 }
 </style>
@@ -134,7 +141,7 @@ const footer = (e) => `<footer class="foot"><div class="page">${logo}<div>Fotogr
 const have = () => `<div class="page"><div class="have"><div><div class="ey">Já comprou?</div><h2>Acesse suas fotos</h2><p class="sub" style="margin-top:4px">Entre com o seu WhatsApp e a senha que você criou.</p></div><a class="hb" href="acesso.html">Já comprei →</a></div></div>`;
 
 function hero(e, title, lead, btns) {
-  const imgs = [1, 2, 3, 4].map((i) => `<img src="capa/${i}.jpg" alt="" ${i > 1 ? 'loading="lazy"' : ''} class="${i === 1 ? 'on' : ''}">`).join('');
+  const imgs = [1, 2, 3, 4].map((i) => `<picture><source media="(max-width:760px)" srcset="capa/m${i}.jpg"><img src="capa/${i}.jpg" alt="" ${i > 1 ? 'loading="lazy"' : ''} class="${i === 1 ? 'on' : ''}"></picture>`).join('');
   return `<header class="hero"><div class="slides">${imgs}</div><div class="shade"></div>
     <div class="nav">${logo}<a class="pill2" href="acesso.html">Já comprei</a></div>
     <div class="in"><span class="hchip">● ${esc(e.eventName)}${dateBR(e) ? ' · ' + dateBR(e) : ''}</span>
