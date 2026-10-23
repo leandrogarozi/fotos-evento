@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Termo da busca por selfie</title><link rel="stylesheet" href="style.css">
+<style>.terms p{margin:0 0 16px;line-height:1.65;font-size:16px}.terms p:first-child{font:400 30px/1.1 'Anton',sans-serif;text-transform:uppercase;margin-bottom:22px}</style>
+</head><body>
+<div class="top wrap wide" style="padding-bottom:0"><a class="logo" id="home" href="index.html" style="color:inherit;text-decoration:none">LEANDRO GAROZI</a><a class="chip" id="back" href="index.html" style="text-decoration:none;color:var(--ink)">← Início</a></div>
+<div class="wrap" style="max-width:720px"><div class="eyebrow" id="ev"></div><div class="terms" id="t"><p class="muted">Carregando...</p></div></div>
+<script src="txt.js"></script>
+<script>
+const E = new URLSearchParams(location.search).get('e') || '', eq = E ? '?e=' + encodeURIComponent(E) : '';
+document.getElementById('home').href = document.getElementById('back').href = 'index.html' + eq;
+fetch('/api/event' + eq).then((r) => r.json()).then((e) => {
+  document.getElementById('ev').textContent = e.eventName || '';
+  document.getElementById('t').innerHTML = String(e.texts.txt_terms || '').split(/\n\s*\n/).map((p) => '<p>' + tLead(p.trim()) + '</p>').join('');
+}).catch(() => { document.getElementById('t').innerHTML = '<p>Não consegui carregar o termo. Recarregue a página.</p>'; });
+</script></body></html>

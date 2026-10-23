@@ -74,7 +74,7 @@
       <div class="rs-tip">Rosto de frente, boa luz, sem óculos escuro nem boné.</div>
       <label class="l">Seu nome na lista (se quiser, junto com a selfie)</label>
       <select id="rs-ath"><option value="">Não escolher agora</option>${options}</select>
-      <label class="rs-agree"><input type="checkbox" id="rs-ok"><span>Autorizo usar esta foto só para esta busca. <b>Ela não é guardada nem sai do seu celular.</b></span></label>
+      <label class="rs-agree"><input type="checkbox" id="rs-ok"><span>Li e aceito o <a href="termo.html${opt.e ? '?e=' + encodeURIComponent(opt.e) : ''}" target="_blank" style="text-decoration:underline;font-weight:700;color:inherit">termo de uso da busca por selfie</a>. <b>Minha foto não é guardada nem sai do meu aparelho.</b></span></label>
       <button class="rs-go" id="rs-go" disabled>Buscar minhas fotos</button>
       <div class="rs-msg" id="rs-msg"></div></div>`;
     document.body.appendChild(ov);
