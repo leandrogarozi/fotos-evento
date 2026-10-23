@@ -83,7 +83,8 @@ const eq = E ? '?e=' + encodeURIComponent(E) : '', eand = E ? '&e=' + encodeURIC
 const reais = (c) => 'R$ ' + (c / 100).toFixed(2).replace('.', ',').replace(',00', '');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = (iso) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).replace(',', ' às');
-const TESTE = new URLSearchParams(location.search).has('teste'); // ?teste mostra a busca por rosto mesmo desligada
+let TESTE = new URLSearchParams(location.search).has('teste'); // ?teste mostra a busca por rosto mesmo desligada (vale até fechar a aba)
+if (TESTE) { try { sessionStorage.setItem('teste', '1'); } catch (_) {} } else { try { TESTE = sessionStorage.getItem('teste') === '1'; } catch (_) {} }
 let ev, until, slideTimer;
 function tick() {
   const el = $('count'); if (!el || !until) return;
