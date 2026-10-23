@@ -23,7 +23,7 @@
 .rs-sheet label.l{margin:12px 0 5px}
 .rs-agree{display:flex;gap:9px;align-items:flex-start;background:var(--card2,#eee);border-radius:14px;padding:11px 12px;font-size:12.5px;line-height:1.4;margin:12px 0}
 .rs-agree input{margin-top:2px;flex:none}
-.rs-go{width:100%;background:var(--sage,#bdcdaa);color:var(--ink,#222);font-weight:700}
+.rs-go{width:100%;background:var(--lime,#a2ff01);color:var(--ink,#141414);font-weight:800}
 .rs-msg{font-size:13.5px;line-height:1.45;margin-top:10px;text-align:center;min-height:20px}
 .rs-msg.err{color:var(--err,#a8392b)}
 .rs-msg button{margin-top:8px}

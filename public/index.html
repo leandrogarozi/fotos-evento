@@ -2,9 +2,73 @@
 <html lang="pt-BR"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Fotos do evento</title><link rel="stylesheet" href="style.css">
+<style>
+body{background:#fff}
+.page{max-width:1180px;margin:0 auto;padding:0 20px}
+/* capa */
+.hero{position:relative;min-height:min(86vh,720px);background:var(--ink);color:#fff;overflow:hidden;display:flex;align-items:flex-end}
+.slides{position:absolute;inset:0}
+.slides img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transform:scale(1.04);transition:opacity 1.2s ease,transform 7s ease-out}
+.slides img.on{opacity:1;transform:scale(1)}
+.shade{position:absolute;inset:0;background:linear-gradient(0deg,rgba(20,20,20,.92) 0,rgba(20,20,20,.5) 42%,rgba(20,20,20,.12) 100%),linear-gradient(90deg,rgba(20,20,20,.55) 0,rgba(20,20,20,0) 62%)}
+.nav{position:absolute;top:0;left:0;right:0;z-index:5;display:flex;justify-content:space-between;align-items:center;padding:16px 20px;max-width:1180px;margin:0 auto}
+.nav .logo{color:#fff;font-size:20px}.nav .logo b{color:var(--lime);font-weight:400}
+.nav .pill2{font:800 12px Figtree;border:1.5px solid rgba(255,255,255,.8);color:#fff;border-radius:40px;padding:9px 16px;text-decoration:none}
+.hero .in{position:relative;z-index:3;padding:0 20px 38px;width:100%;max-width:1180px;margin:0 auto}
+.hchip{display:inline-flex;gap:8px;align-items:center;background:var(--lime);color:var(--ink);font:800 11px Figtree;letter-spacing:.08em;text-transform:uppercase;padding:7px 12px;border-radius:30px}
+.hero h1{font-size:clamp(46px,9vw,84px);margin:16px 0 12px;max-width:820px}
+.hero h1 em{background:none;color:var(--lime)}
+.hero p.lead{color:#ececE6;max-width:520px;margin:0;font-size:16px}
+.btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.hb{display:inline-flex;align-items:center;justify-content:center;gap:9px;height:52px;padding:0 26px;border-radius:50px;font:800 14px Figtree;letter-spacing:.02em;text-decoration:none;cursor:pointer;border:0}
+.hb.p{background:var(--lime);color:var(--ink)}.hb.o{border:2px solid #fff;color:#fff;background:transparent}
+.hb.d{background:var(--ink);color:#fff}
+.dots{display:flex;gap:7px;margin-top:24px}.dots button{width:28px;height:4px;min-height:0;padding:0;border-radius:3px;background:rgba(255,255,255,.35)}.dots button.on{background:var(--lime)}
+/* faixa */
+.band{background:var(--lime);color:var(--ink);padding:13px 0;overflow:hidden}
+.band div{font:400 21px Anton;text-transform:uppercase;letter-spacing:.04em;display:flex;gap:28px;justify-content:center;flex-wrap:wrap;padding:0 14px}
+.band span:nth-child(even){opacity:.5}
+section.s{padding:52px 0 0}
+.h2s{font-size:clamp(34px,6vw,48px);margin:8px 0 8px;line-height:1}
+.ey{font:800 11px Figtree;letter-spacing:.14em;text-transform:uppercase;color:#6b6f66}
+.sub{color:#555;max-width:560px}
+.steps3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:24px}
+.st{border:1.5px solid var(--line);border-radius:22px;padding:22px}
+.st .n{font:400 54px/1 Anton;color:var(--lime);-webkit-text-stroke:1.5px var(--ink)}
+.st h3{font:400 24px Anton;text-transform:uppercase;margin:8px 0 4px;letter-spacing:.02em}
+.st p{font-size:14.5px;color:#555}
+.galbg{background:var(--card2);margin-top:52px;padding:46px 0}
+.gh{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.gg{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-top:22px}
+.gg a{position:relative;display:block;aspect-ratio:4/5;border-radius:16px;overflow:hidden;background:var(--card)}
+.gg img{width:100%;height:100%;object-fit:cover;display:block}
+.pcs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:24px}
+.pc{border-radius:22px;padding:22px;background:#fff;border:1.5px solid var(--line)}
+.pc .q{font:400 22px Anton;text-transform:uppercase;letter-spacing:.03em}
+.pc .v{font:400 48px/1.05 Anton;margin:8px 0 4px;white-space:nowrap}
+.pc small{color:#666;font-size:13px;display:block}
+.pc.hot{background:var(--ink);color:#fff;border-color:var(--ink)}.pc.hot .v{color:var(--lime)}.pc.hot small{color:#cfcfca}
+.bdg{display:inline-block;background:var(--lime);color:var(--ink);font:800 10px Figtree;letter-spacing:.1em;text-transform:uppercase;padding:4px 9px;border-radius:20px;margin-bottom:8px}
+.selfb{background:var(--ink);color:#fff;border-radius:28px;padding:36px;display:grid;grid-template-columns:1.2fr 1fr;gap:28px;align-items:center;margin-top:52px}
+.selfb h2{font-size:clamp(34px,6vw,48px)}.selfb h2 em{background:none;color:var(--lime)}
+.selfb p{color:#d6d6d0;max-width:480px;margin-top:6px}
+.cam{border-radius:24px;aspect-ratio:4/5;background:linear-gradient(170deg,#4a4d48,#222);position:relative;overflow:hidden;max-width:290px;justify-self:center;width:100%}
+.cam .ov{position:absolute;left:50%;top:50%;transform:translate(-50%,-55%);width:56%;aspect-ratio:3/4;border:2.5px dashed var(--lime);border-radius:50%}
+.priv{margin-top:16px;font-size:13px;color:#bcbcb6}
+.have{border:2px solid var(--ink);border-radius:26px;padding:26px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin-top:52px}
+.have h2{margin:4px 0 0}
+.foot{background:var(--ink);color:#cfcfca;padding:34px 0;margin-top:56px;font-size:14px}
+.foot .page{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;align-items:center}
+.foot .logo{color:#fff}.foot .logo b{color:var(--lime);font-weight:400}.foot a{color:#fff}
+.narrow{max-width:620px}
+.card.hl{border:2px solid var(--ink)}
+@media(max-width:760px){
+ .hero{min-height:640px}.steps3{grid-template-columns:1fr}.gg{grid-template-columns:repeat(2,1fr)}
+ .selfb{grid-template-columns:1fr;padding:26px 22px}.band div{font-size:16px;gap:16px}.btns .hb{flex:1;min-width:46%}
+}
+</style>
 </head><body>
-<div class="top wrap" style="padding-bottom:0"><span class="logo">LEANDRO GAROZI</span><a class="chip" href="acesso.html" style="text-decoration:none;color:var(--ink)">Já comprei</a></div>
-<div class="wrap" id="root"><p class="muted" style="margin-top:40px">Carregando...</p></div>
+<div id="root"></div>
 <script src="pin.js"></script>
 <script src="rosto.js"></script>
 <script src="txt.js"></script>
@@ -15,7 +79,8 @@ const eq = E ? '?e=' + encodeURIComponent(E) : '', eand = E ? '&e=' + encodeURIC
 const reais = (c) => 'R$ ' + (c / 100).toFixed(2).replace('.', ',').replace(',00', '');
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const fmt = (iso) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }).replace(',', ' às');
-let ev, until;
+const TESTE = new URLSearchParams(location.search).has('teste'); // ?teste mostra a busca por rosto mesmo desligada
+let ev, until, slideTimer;
 function tick() {
   const el = $('count'); if (!el || !until) return;
   const ms = Date.parse(until) - Date.now();
@@ -30,39 +95,51 @@ function tickSales() {
   const d = Math.floor(ms / 864e5), h = Math.floor(ms % 864e5 / 36e5), m = Math.floor(ms % 36e5 / 6e4);
   el.textContent = `faltam ${d ? d + (d > 1 ? ' dias ' : ' dia ') : ''}${h}h ${m}min`;
 }
-const tierRows = (e) => (e.tiers || []).map((t) => `<div><span>${t.n} foto${t.n > 1 ? 's' : ''}</span><b>${reais(t.cents)}</b></div>`).join('');
-const packName = (e) => e.packLimit ? `Pacote completo, até ${e.packLimit} fotos do atleta` : 'Pacote completo, todas as fotos do atleta';
-const extraRow = (L) => L && L.limit ? `<div><span>Foto adicional (acima de ${L.limit})</span><b>${reais(L.extra)}</b></div>` : '';
-const packRow = (L, price) => `<div><span>${L && L.limit ? 'Pacote completo (até ' + L.limit + ' fotos)' : 'Pacote completo (todas as fotos do atleta)'}</span><b>${reais(price)}</b></div>`;
-const salesBox = (e) => e.salesEnd ? `<div class="box sage" style="margin-top:22px;font-size:16px"><b>Vendas encerram em ${fmt(e.salesEnd)}</b><br><span id="sc" style="font-size:14px"></span><br><span style="font-size:13px">Depois dessa data não será possível comprar.</span></div>` : '';
-function closedView(e) {
-  $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>${tTitle(e.texts.txt_closed_title)}</h1>
-    <p class="lead">${tLead(e.texts.txt_closed_lead)}</p>
-    <a class="btn go full" style="width:100%" href="acesso.html">Já comprei, acessar minhas fotos</a>`;
-}
+const salesBox = (e) => e.salesEnd ? `<div class="box sage" style="margin-top:28px;font-size:16px"><b>Vendas encerram em ${fmt(e.salesEnd)}</b><br><span id="sc" style="font-size:14px"></span><br><span style="font-size:13px">Depois dessa data não será possível comprar.</span></div>` : '';
+const faceOn = (e) => e.faceEnabled || TESTE;
+const logo = '<span class="logo">LEANDRO <b>GAROZI</b></span>';
+const dateBR = (e) => { const d = String(e.eventDate || '').split('-'); return d.length === 3 ? d[2] + '/' + d[1] : ''; };
 const options = (e) => {
   const g = {}; e.athletes.forEach((a) => (g[a.turma || 'Outros'] = g[a.turma || 'Outros'] || []).push(a));
   return Object.keys(g).map((t) => `<optgroup label="Turma ${esc(t)}">${g[t].map((a) => `<option value="${a.id}">${esc(a.name)}</option>`).join('')}</optgroup>`).join('');
 };
-const TESTE = new URLSearchParams(location.search).has('teste'); // ?teste mostra a busca por rosto mesmo desligada
-const faceCard = (e) => (e.faceEnabled || TESTE) ? `<div class="card">
-      <div class="row" style="gap:14px;flex-wrap:nowrap;align-items:center">
-        <div style="width:56px;height:56px;border-radius:16px;background:var(--card2);display:grid;place-items:center;flex:none"><svg width="30" height="30" viewBox="0 0 30 30" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 10V6a2 2 0 0 1 2-2h4M20 4h4a2 2 0 0 1 2 2v4M26 20v4a2 2 0 0 1-2 2h-4M10 26H6a2 2 0 0 1-2-2v-4"/><circle cx="15" cy="13" r="4"/><path d="M8 22c1-3 4-5 7-5s6 2 7 5"/></svg></div>
-        <div><h2 style="font-size:20px;margin:0 0 2px">Buscar pelo meu rosto</h2><div class="muted" style="font-size:14px">Tire uma <b>selfie</b> ou envie uma <b>foto</b> sua e eu acho suas fotos.</div></div>
-      </div>
-      <button class="go full" id="selfie" style="margin-top:16px">Tirar selfie</button>
-      <button class="light full" id="selfie-up" style="margin-top:10px">+ Enviar foto</button>
-    </div>` : '';
-const openFace = (e, mode) => Rosto.open({ mode, e: E, athletes: e.athletes, onDone: (ids, a, maybe) => { try { sessionStorage.setItem('rosto:' + (E || 'principal'), JSON.stringify({ ids, maybe: maybe || [] })); } catch (_) {} location.href = 'galeria.html?' + (a ? 'a=' + a + '&' : '') + 'r=1' + eand; } });
 const nameHelp = (e) => 'https://wa.me/' + e.whatsapp + '?text=' + encodeURIComponent('Oi! Não encontrei meu nome na lista de atletas do ' + e.eventName + '.');
+const tierCards = (e) => (e.tiers || []).map((t) => `<div class="pc"><div class="q">${t.n} foto${t.n > 1 ? 's' : ''}</div><div class="v">${reais(t.cents)}</div><small>${t.n > 1 ? reais(Math.round(t.cents / t.n)) + ' cada' : 'Avulsa'}</small></div>`).join('');
+const packCards = (L, price) => `<div class="pc hot"><span class="bdg">Pacote completo</span><div class="q">${L && L.limit ? 'Até ' + L.limit + ' fotos' : 'Todas as fotos'}</div><div class="v">${reais(price)}</div><small>${L && L.limit ? 'Do atleta' : 'Do atleta, sem limite'}</small></div>${L && L.limit ? `<div class="pc"><div class="q">Foto adicional</div><div class="v">${reais(L.extra)}</div><small>Acima de ${L.limit} fotos</small></div>` : ''}`;
+
+const steps = (items) => `<section class="s"><div class="page"><div class="ey">Passo a passo</div><h2 class="h2s">Como <em>funciona</em></h2>
+  <div class="steps3">${items.map((x, i) => `<div class="st"><div class="n">${i + 1}</div><h3>${x[0]}</h3><p>${x[1]}</p></div>`).join('')}</div></div></section>`;
+const footer = (e) => `<footer class="foot"><div class="page">${logo}<div>Fotografia esportiva</div><div><a href="https://wa.me/${e.whatsapp}" target="_blank">WhatsApp</a>${e.instagram ? ' · <a href="https://instagram.com/' + encodeURIComponent(e.instagram) + '" target="_blank">Instagram</a>' : ''}</div></div></footer>`;
+const have = () => `<div class="page"><div class="have"><div><div class="ey">Já comprou?</div><h2>Acesse suas fotos</h2><p class="sub" style="margin-top:4px">Entre com o seu WhatsApp e a senha que você criou.</p></div><a class="hb d" href="acesso.html">Já comprei →</a></div></div>`;
+
+function hero(e, title, lead, btns) {
+  const imgs = [1, 2, 3, 4].map((i) => `<img src="capa/${i}.jpg" alt="" ${i > 1 ? 'loading="lazy"' : ''} class="${i === 1 ? 'on' : ''}">`).join('');
+  return `<header class="hero"><div class="slides">${imgs}</div><div class="shade"></div>
+    <div class="nav">${logo}<a class="pill2" href="acesso.html">Já comprei</a></div>
+    <div class="in"><span class="hchip">● ${esc(e.eventName)}${dateBR(e) ? ' · ' + dateBR(e) : ''}</span>
+      <h1>${tTitle(title)}</h1><p class="lead">${tLead(lead)}</p>
+      <div class="btns">${btns}</div><div class="dots" id="dots"><button class="on" aria-label="Foto 1"></button><button aria-label="Foto 2"></button><button aria-label="Foto 3"></button><button aria-label="Foto 4"></button></div></div></header>`;
+}
+function startSlides() {
+  const imgs = [...document.querySelectorAll('.slides img')], dots = [...document.querySelectorAll('#dots button')]; let i = 0;
+  const go = (n) => { i = (n + imgs.length) % imgs.length; imgs.forEach((x, k) => x.classList.toggle('on', k === i)); dots.forEach((x, k) => x.classList.toggle('on', k === i)); };
+  dots.forEach((d, k) => { d.onclick = () => { go(k); clearInterval(slideTimer); slideTimer = setInterval(() => go(i + 1), 5500); }; });
+  clearInterval(slideTimer); slideTimer = setInterval(() => { if (!document.hidden) go(i + 1); }, 5500);
+}
+const openFace = (e, mode) => Rosto.open({ mode, e: E, athletes: e.athletes, onDone: (ids, a, maybe) => { try { sessionStorage.setItem('rosto:' + (E || 'principal'), JSON.stringify({ ids, maybe: maybe || [] })); } catch (_) {} location.href = 'galeria.html?' + (a ? 'a=' + a + '&' : '') + 'r=1' + eand; } });
+const scrollTo = (id) => { const el = $(id); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+
+function closedView(e) {
+  $('root').innerHTML = hero(e, e.texts.txt_closed_title, e.texts.txt_closed_lead, '<a class="hb p" href="acesso.html">Já comprei, acessar minhas fotos</a>') + footer(e);
+  startSlides();
+}
+
 function presaleView(e) {
-  $('root').innerHTML = `
-    <div class="eyebrow">${esc(e.eventName)}</div>
-    <h1>${tTitle(e.texts.txt_presale_title)}</h1>
-    <p class="lead">${tLead(e.texts.txt_presale_lead)}</p>
-    ${salesBox(e)}
-    <div class="card">
-      <div class="muted" style="font-size:14px">${packName(e)}</div>
+  $('root').innerHTML = hero(e, e.texts.txt_presale_title, e.texts.txt_presale_lead, '<a class="hb p" id="h-buy">Garantir minhas fotos</a><a class="hb o" id="h-how">Como funciona</a>') +
+    `<div class="band"><div><span>Alta qualidade</span><span>///</span><span>Sem marca d'água</span><span>///</span><span>Pix ou cartão</span></div></div>
+    <div class="page narrow" style="padding-bottom:10px" id="comprar">${salesBox(e)}
+    <div class="card hl">
+      <div class="muted" style="font-size:14px">${e.packLimit ? 'Pacote completo, até ' + e.packLimit + ' fotos do atleta' : 'Pacote completo, todas as fotos do atleta'}</div>
       <div class="price">${reais(e.allPrice)}</div>
       ${e.packLimit ? `<div class="muted" style="font-size:14px;margin-top:2px">Fotos adicionais: <b>${reais(e.packExtra)}</b> cada</div>` : ''}
       <div class="row" style="margin-top:6px"><span class="chip" id="count"></span><span class="muted" style="font-size:13px">Depois: ${reais(e.deadline.next)}</span></div>
@@ -70,7 +147,7 @@ function presaleView(e) {
         <label>De quem são as fotos</label>
         <select id="athlete" required><option value="">Escolha o nome do atleta</option>${options(e)}</select>
         <div class="hint-small" id="who" style="font-size:14px;color:var(--ink)"></div>
-        <div class="hint-small">Não achou o nome? <a href="${nameHelp(e)}" target="_blank" style="color:var(--moss);font-weight:700">Fale comigo</a>.</div>
+        <div class="hint-small">Não achou o nome? <a href="${nameHelp(e)}" target="_blank" style="font-weight:700;color:var(--ink)">Fale comigo</a>.</div>
         <label>Seu nome</label><input id="name" required autocomplete="name">
         <label>Seu WhatsApp (com DDD)</label><input id="wpp" type="tel" inputmode="tel" required autocomplete="tel" placeholder="27 99999-9999">
         <label>Seu e-mail</label><input id="email" type="email" required autocomplete="email" placeholder="seu melhor e-mail">
@@ -83,18 +160,12 @@ function presaleView(e) {
     <div class="card" style="background:var(--card2);border:0">
       <h2>${esc(e.texts.txt_presale_after_title)}</h2>
       <p class="muted" style="font-size:14px;margin-bottom:4px">${tLead(e.texts.txt_presale_after_note)}</p>
-      <div class="prices">${tierRows(e)}${e.deadline && e.deadline.next ? packRow(e.packLater, e.deadline.next) : ''}${extraRow(e.packLater)}</div>
+      <div class="prices">${(e.tiers || []).map((t) => `<div><span>${t.n} foto${t.n > 1 ? 's' : ''}</span><b>${reais(t.cents)}</b></div>`).join('')}${e.deadline && e.deadline.next ? `<div><span>${e.packLater && e.packLater.limit ? 'Pacote completo (até ' + e.packLater.limit + ' fotos)' : 'Pacote completo (todas as fotos do atleta)'}</span><b>${reais(e.deadline.next)}</b></div>` : ''}${e.packLater && e.packLater.limit ? `<div><span>Foto adicional (acima de ${e.packLater.limit})</span><b>${reais(e.packLater.extra)}</b></div>` : ''}</div>
       <div class="box sage" style="margin-top:12px">Na pré-venda o pacote completo ${e.packLimit ? 'inclui até <b>' + e.packLimit + ' fotos</b>' : 'inclui <b>todas as fotos</b> do atleta'} e sai por <b>${reais(e.allPrice)}</b>${e.packLimit ? ' (foto adicional: ' + reais(e.packExtra) + ')' : ''}.</div>
-    </div>
-    <div class="card" style="background:var(--card2);border:0">
-      <h2>Como funciona</h2>
-      <ol class="steps">
-        <li>Você paga com Pix ou cartão.</li>
-        <li>Quando o pagamento for confirmado, toque em <b>Voltar ao site</b>.</li>
-        <li>Depois do evento, volte aqui, toque em <b>Já comprei</b> e entre com seu WhatsApp e a senha que você criou.</li>
-      </ol>
-    </div>`;
-  until = e.presaleEnd; tick(); if (window.initPins) initPins();
+    </div></div>` +
+    '<div id="how">' + steps([['Pague', 'Pague com Pix ou cartão. Você cria uma senha de 4 a 6 números.'], ['Volte ao site', 'Quando o pagamento for confirmado, toque em Voltar ao site.'], ['Baixe', 'Depois do evento, toque em Já comprei e entre com seu WhatsApp e a senha. Suas fotos estão lá.']]) + '</div>' + have() + footer(e);
+  until = e.presaleEnd; tick(); if (window.initPins) initPins(); startSlides();
+  $('h-buy').onclick = () => scrollTo('comprar'); $('h-how').onclick = () => scrollTo('how');
   $('athlete').addEventListener('change', () => { const a = e.athletes.find((x) => String(x.id) === $('athlete').value); $('who').innerHTML = a ? 'Você está comprando as fotos de <b>' + esc(a.name) + '</b>.' : ''; });
   $('f').addEventListener('submit', async (x) => {
     x.preventDefault(); $('err').textContent = ''; $('go').disabled = true;
@@ -107,39 +178,47 @@ function presaleView(e) {
     } catch (err) { $('err').textContent = err.message; $('go').disabled = false; }
   });
 }
+
 function storeView(e) {
-  const dl = e.deadline;
-  $('root').innerHTML = `
-    <div class="eyebrow">${esc(e.eventName)}</div>
-    <h1>${tTitle(e.texts.txt_store_title)}</h1>
-    <p class="lead">${tLead(e.texts.txt_store_lead)}</p>
-    ${salesBox(e)}
-    ${faceCard(e)}
-    <div class="card">
+  const dl = e.deadline, face = faceOn(e);
+  const btns = face
+    ? '<a class="hb p" id="h-face">◉ Buscar pelo meu rosto</a><a class="hb o" id="h-name">Escolher meu nome</a>'
+    : '<a class="hb p" id="h-name">Ver minhas fotos</a><a class="hb o" href="galeria.html' + eq + '">Ver todas as fotos</a>';
+  $('root').innerHTML = hero(e, e.texts.txt_hero_title || e.texts.txt_store_title, e.texts.txt_hero_lead || e.texts.txt_store_lead, btns) +
+    `<div class="band"><div><span>Alta qualidade</span><span>///</span><span>Sem marca d'água</span><span>///</span><span>Download na hora</span><span>///</span><span>Pix ou cartão</span></div></div>
+    <div class="page">${salesBox(e)}</div>` +
+    steps([['Encontre', face ? 'Tire uma selfie ou escolha seu nome na lista. A gente mostra as suas fotos.' : 'Escolha seu nome na lista e veja as suas fotos.'], ['Escolha', 'Toque no coração das que você quer levar. O preço aparece na hora.'], ['Baixe', "Pague com Pix ou cartão e baixe tudo, sem marca d'água. O link e a senha vão para o seu e-mail."]]) +
+    `<div class="galbg" id="galwrap" style="display:none"><div class="page"><div class="gh"><div><div class="ey">Prévia da galeria</div><h2 class="h2s">As fotos do <em>evento</em></h2></div><a class="hb d" href="galeria.html${eq}">Ver todas as fotos →</a></div><div class="gg" id="gg"></div></div></div>
+    <section class="s"><div class="page"><div class="ey">Valores</div><h2 class="h2s">Quanto <em>custa</em></h2>
+      <p class="sub">Você paga só pelas fotos que escolher. Quanto mais fotos, mais barato cada uma.</p>
+      <div class="pcs">${tierCards(e)}${packCards({ limit: e.packLimit, extra: e.packExtra }, e.allPrice)}</div>
+      ${dl.until ? `<div class="box sage" style="max-width:640px">Pacote completo por ${reais(e.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}. <span id="count" class="chip" style="margin-left:6px"></span></div>` : ''}</div></section>
+    ${face ? `<div class="page"><div class="selfb"><div><div class="ey" style="color:var(--lime)">Busca por rosto</div><h2>Sua selfie <em>acha tudo</em></h2>
+      <p>Nada de ficar rolando centenas de fotos. Tire uma selfie e a gente mostra as fotos em que você aparece, inclusive as de longe.</p>
+      <div class="btns"><a class="hb p" id="selfie">◉ Tirar selfie</a><a class="hb o" id="selfie-up">+ Enviar foto</a></div>
+      <div class="priv">🔒 Sua foto não é guardada e não sai do seu celular. Só números do rosto são comparados.</div></div>
+      <div class="cam"><div class="ov"></div></div></div></div>` : ''}
+    <section class="s" id="nome"><div class="page narrow"><div class="card hl" style="margin-top:0"><h2>Escolha seu nome</h2>
       <label>Seu nome na lista</label>
       <select id="athlete"><option value="">Escolha o atleta</option>${options(e)}</select>
-      <div class="hint-small">Não achou o nome? <a href="${nameHelp(e)}" target="_blank" style="color:var(--moss);font-weight:700">Fale comigo</a>.</div>
+      <div class="hint-small">Não achou o nome? <a href="${nameHelp(e)}" target="_blank" style="font-weight:700;color:var(--ink)">Fale comigo</a>.</div>
       <button class="go full" id="see">Ver minhas fotos</button>
       <a class="btn light full" style="width:100%;margin-top:12px" href="galeria.html${eq}">Ver todas as fotos</a>
-      <p class="hint-small" style="text-align:center;margin-top:16px">Já comprou? <a href="acesso.html" style="color:var(--moss);font-weight:700">Acesse suas fotos com WhatsApp e senha</a>.</p>
-    </div>
-    <div class="card" style="background:var(--card2);border:0">
-      <h2>Quanto custa</h2>
-      <div class="prices">
-        ${tierRows(e)}
-        <div><span>${e.packLimit ? 'Pacote completo (até ' + e.packLimit + ' fotos)' : 'Todas as fotos do atleta'}</span><b>${reais(e.allPrice)}</b></div>
-        ${extraRow({ limit: e.packLimit, extra: e.packExtra })}
-      </div>
-      ${dl.until ? `<div class="box sage">Pacote completo por ${reais(e.allPrice)} até ${fmt(dl.until)}. Depois, ${reais(dl.next)}. <span id="count" class="chip" style="margin-left:6px"></span></div>` : ''}
-    </div>`;
-  until = dl.until; tick();
-  if ($('selfie')) { $('selfie').onclick = () => openFace(e, 'cam'); $('selfie-up').onclick = () => openFace(e, 'up'); }
+    </div></div></section>` + have() + footer(e);
+  until = dl.until; tick(); startSlides();
+  $('h-name').onclick = () => scrollTo('nome');
+  if (face) { $('h-face').onclick = () => openFace(e, 'cam'); $('selfie').onclick = () => openFace(e, 'cam'); $('selfie-up').onclick = () => openFace(e, 'up'); }
   $('see').onclick = () => { const a = $('athlete').value; if (a) location.href = 'galeria.html?a=' + a + eand; else $('athlete').focus(); };
+  fetch('/api/photos?e=' + encodeURIComponent(E)).then((r) => r.json()).then((d) => {
+    const all = d.photos || []; if (!all.length) return;
+    const n = Math.min(12, all.length), step = all.length / n, pick = Array.from({ length: n }, (_, i) => all[Math.floor(i * step)]);
+    $('gg').innerHTML = pick.map((id) => `<a href="galeria.html${eq}"><img src="/img/${id}" loading="lazy" alt="" draggable="false"></a>`).join(''); $('galwrap').style.display = '';
+  }).catch(() => {});
 }
 fetch('/api/event' + eq).then((r) => r.json()).then((e) => {
-  if (e.error) { $('root').innerHTML = '<h1 style="margin-top:40px">Evento <em>não encontrado</em></h1><p class="lead">Confira o link que você recebeu.</p>'; return; }
+  if (e.error) { $('root').innerHTML = '<div class="page"><h1 style="margin-top:60px">Evento <em>não encontrado</em></h1><p class="lead">Confira o link que você recebeu.</p></div>'; return; }
   ev = e; document.title = 'Fotos: ' + e.eventName;
   e.salesClosed ? closedView(e) : e.presale ? presaleView(e) : storeView(e);
   tickSales(); setInterval(() => { tick(); tickSales(); }, 30000);
-}).catch(() => { $('root').innerHTML = '<p class="err" style="margin-top:40px">Não consegui carregar. Recarregue a página.</p>'; });
+}).catch(() => { $('root').innerHTML = '<p class="err" style="margin:60px 20px">Não consegui carregar. Recarregue a página.</p>'; });
 </script></body></html>

@@ -69,7 +69,7 @@ async function load(sync) {
       el.onclick = () => {
         const id = el.dataset.id;
         if (sel.has(id)) sel.delete(id); else if (sel.size < L) sel.add(id); else { $('perr').textContent = `Seu pacote vale até ${L} fotos. Desmarque uma para trocar.`; return; }
-        $('perr').textContent = ''; const on = sel.has(id); el.style.outline = on ? '3px solid var(--moss)' : ''; el.querySelector('.pk').textContent = on ? '✓ Escolhida' : 'Escolher'; upd();
+        $('perr').textContent = ''; const on = sel.has(id); el.style.outline = on ? '3px solid var(--lime)' : ''; el.querySelector('.pk').textContent = on ? '✓ Escolhida' : 'Escolher'; upd();
       };
     });
     $('pconf').onclick = async () => {

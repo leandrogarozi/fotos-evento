@@ -167,7 +167,7 @@ function reenviar(id) {
 async function act(id, action) { try { await api('orders', { id, action }); lo(); } catch (e) { alert(e.message); } }
 const FIELDS = [
   ['Evento'],
-  ['event_name', 'Nome do evento', 'text'], ['event_date', 'Data do evento', 'date'], ['whatsapp', 'Seu WhatsApp (com 55)', 'text'], ['brand_text', 'Texto da marca d\'água', 'text'],
+  ['event_name', 'Nome do evento', 'text'], ['event_date', 'Data do evento', 'date'], ['whatsapp', 'Seu WhatsApp (com 55)', 'text'], ['brand_text', 'Texto da marca d\'água', 'text'], ['instagram', 'Seu Instagram (usuário, sem @)', 'text'],
   ['Pré-venda','Vale até o fim da pré-venda. O pacote leva as fotos do atleta (todas, ou até o limite que você definir).'],
   ['presale_price_cents', 'Valor do pacote completo', 'money'], ['presale_limit', 'Até quantas fotos (0 = todas)', 'number'], ['presale_extra_cents', 'Foto adicional (cada) acima do limite', 'money'],
   ['presale_end', 'Fim da pré-venda', 'datetime'],
@@ -179,6 +179,7 @@ const FIELDS = [
   ['Datas das vendas (horário de Brasília)'],
   ['published_at', 'Fotos publicadas em (conta o prazo acima)', 'datetime', true], ['sales_end', 'Encerramento das vendas', 'datetime', true], ['sales_days', 'Ou: dias de venda após publicar (0 = não usar)', 'number'],
   ['Textos do site (use *asteriscos* para destacar: verde nos títulos, negrito nos textos)'],
+  ['txt_hero_title', 'Página inicial (capa): título', 'textline'], ['txt_hero_lead', 'Página inicial (capa): texto', 'textarea'],
   ['txt_presale_title', 'Pré-venda: título', 'textline'], ['txt_presale_lead', 'Pré-venda: texto', 'textarea'],
   ['txt_presale_after_title', 'Pré-venda: título da lista "depois da pré-venda"', 'textline'], ['txt_presale_after_note', 'Pré-venda: texto da lista "depois da pré-venda"', 'textarea'],
   ['txt_store_title', 'Loja (depois da pré-venda): título', 'textline'], ['txt_store_lead', 'Loja: texto', 'textarea'],
@@ -440,8 +441,8 @@ function pmRender() {
     ${/^\d+$/.test($('pm-ath').value) ? `<button class="small ghost" onclick="pmAssign('unassign')">Tirar deste atleta</button>` : ''}
     <button class="small ghost" onclick="pmAssign('clear')">Deixar sem atleta</button></div>` : '';
   $('pm-grid').innerHTML = pmIds.length ? pmIds.map(id => { const on = pmSel.has(id); return `<div onclick="pmToggle('${id}')" style="position:relative;cursor:pointer">
-      <img src="/img/${id}" loading="lazy" alt="" style="width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:14px;display:block;outline:${on ? '3px solid var(--moss)' : '0'};outline-offset:-3px">
-      <span style="position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;background:${on ? 'var(--moss)' : 'rgba(255,255,255,.92)'};color:#fff;display:grid;place-items:center;font-size:14px">${on ? '✓' : ''}</span></div>`; }).join('')
+      <img src="/img/${id}" loading="lazy" alt="" style="width:100%;aspect-ratio:4/5;object-fit:cover;border-radius:14px;display:block;outline:${on ? '3px solid var(--lime)' : '0'};outline-offset:-3px">
+      <span style="position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;background:${on ? 'var(--lime)' : 'rgba(255,255,255,.92)'};color:var(--ink);display:grid;place-items:center;font-size:14px">${on ? '✓' : ''}</span></div>`; }).join('')
     : ($('pm-ath').value ? '<p class="muted" style="grid-column:1/-1">Nenhuma foto aqui.</p>' : '');
 }
 function pmToggle(id) { pmSel.has(id) ? pmSel.delete(id) : pmSel.add(id); pmRender(); }

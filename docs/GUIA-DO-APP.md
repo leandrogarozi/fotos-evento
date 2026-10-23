@@ -225,3 +225,8 @@ O que seria novo: sessão por cliente (um "evento" por ensaio, com cota COM/SEM 
 - Migração 0009 (`photo_faces`, `photos.faces_done`). Teste: `test/rosto.test.js`.
 - Qualidade da busca: ao enviar, "Completa" corta a foto em pedaços e acha também gente ao fundo e de longe (bem mais lento; precisa de aceleração de vídeo no navegador), "Rápida" só rostos maiores. "Refazer os rostos das fotos já enviadas" recalcula pela pasta do computador, sem enviar de novo.
 - Resultado da busca: "parecem você" (distância dentro do rigor) e "Talvez sejam você" (um pouco acima; rostos pequenos têm mais folga). Migração 0010 (`photo_faces.w`).
+
+## Visual v4 (capa com fotos)
+- Paleta: branco predominante, verde-limão `#A2FF01`, preto `#141414`, cinza `#434343`. Fontes: Anton (títulos) e Figtree (textos). Tudo definido em `public/style.css` (vale para o site e o painel).
+- Página inicial (`public/index.html`): capa com as 4 fotos de `public/capa/1.jpg` a `4.jpg` (masculina, feminina, masculina, feminina), girando a cada 5,5 s. Para trocar uma foto, substitua o arquivo com o mesmo nome (JPG, uns 1800 px de largura) e publique.
+- Textos da capa: Preços e datas > Textos do site > "Página inicial (capa)". O Instagram do rodapé vem de Preços e datas > Evento.

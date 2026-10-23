@@ -19,6 +19,7 @@ export async function onRequestGet({ request, env }) {
     eventDate: cfg.event_date,
     whatsapp: cfg.whatsapp,
     brandText: cfg.brand_text,
+    instagram: String(cfg.instagram || '').replace(/^@/, ''),
     texts: Object.fromEntries(Object.keys(DEFAULTS).filter((k) => k.startsWith('txt_')).map((k) => [k, cfg[k] || DEFAULTS[k]])),
     claimEnabled: Number(cfg.claim_enabled) === 1,
     claimMax: Math.max(0, Number(cfg.claim_max) || 0),
