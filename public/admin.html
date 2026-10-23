@@ -3,22 +3,23 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex"><title>Painel</title><link rel="stylesheet" href="style.css">
 <style>.wrap{max-width:900px}.tabs{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}.tabs button{background:var(--surface);color:var(--text);border:1px solid var(--border)}.tabs button.on{background:var(--dark);color:#fff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}@media(max-width:560px){.grid{grid-template-columns:1fr}}
-body{font-size:14px;line-height:1.45}
+body{font-size:14px;line-height:1.55}
 .wrap{max-width:1000px;padding:64px 16px 48px}@media(max-width:600px){.wrap{padding-top:40px}}
 h1{font-size:clamp(24px,5vw,32px);margin-bottom:10px}
 h2{font-size:19px;margin-bottom:8px}
-.card{border-radius:16px;padding:16px 18px;margin-top:12px}
-label{font-size:12px;margin:10px 0 4px}
-input,select,textarea{padding:8px 11px;border-radius:10px;font-size:14px}
+.card{border-radius:18px;padding:24px 26px;margin-top:16px}
+label{font-size:12.5px;margin:16px 0 6px}
+input,select,textarea{padding:10px 12px;border-radius:10px;font-size:14px}
 select{background-position:calc(100% - 17px) 55%,calc(100% - 11px) 55%}
 button,.btn{min-height:36px;padding:0 16px;font-size:13px;gap:8px}
 button.small,.btn.small{min-height:30px;padding:0 12px;font-size:12px}
-.tabs{gap:6px;margin-top:12px}.tabs button{min-height:34px;padding:0 14px}
+.tabs{gap:8px;margin-top:20px}.tabs button{min-height:34px;padding:0 14px}
 .box{padding:8px 12px;font-size:13px;border-radius:10px}
-.g3{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px 12px}.span2{grid-column:span 2}
+.g3{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px 20px}
+.g3 label{margin-top:12px}.span2{grid-column:span 2}
 @media(max-width:760px){.g3{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:480px){.g3{grid-template-columns:1fr}}
-.sec{grid-column:1/-1;margin:14px 0 0;padding:6px 10px;background:var(--paper);border-radius:8px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);font-weight:600}
+.sec{grid-column:1/-1;margin:38px 0 6px;padding:9px 14px;background:var(--paper);border-radius:8px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);font-weight:600}
 .sec span{display:block;text-transform:none;letter-spacing:0;font-weight:400;color:var(--mute);margin-top:2px}
 .full-w{grid-column:1/-1}
 </style>
@@ -169,12 +170,12 @@ const FIELDS = [
   ['Evento'],
   ['event_name', 'Nome do evento', 'text'], ['event_date', 'Data do evento', 'date'], ['whatsapp', 'Seu WhatsApp (com 55)', 'text'], ['brand_text', 'Texto da marca d\'água', 'text'], ['instagram', 'Seu Instagram (usuário, sem @)', 'text'],
   ['Pré-venda','Vale até o fim da pré-venda. O pacote leva as fotos do atleta (todas, ou até o limite que você definir).'],
-  ['presale_price_cents', 'Valor do pacote completo', 'money'], ['presale_limit', 'Até quantas fotos (0 = todas)', 'number'], ['presale_extra_cents', 'Foto adicional (cada) acima do limite', 'money'],
+  ['presale_price_cents', 'Valor do pacote completo', 'money'], ['presale_limit', 'Até quantas fotos (0 = todas)', 'number'], ['presale_extra_cents', 'Foto adicional (cada)', 'money'],
   ['presale_end', 'Fim da pré-venda', 'datetime'],
   ['Fotos avulsas','Quem não leva o pacote escolhe quantas fotos quer. O site cobra sempre o menor valor possível.'],
   ['price_tiers', 'Pacotes (quantidade e preço)', 'tiers'],
   ['Depois da pré-venda','Valem quando a pré-venda terminar.'],
-  ['price_all_event_cents', 'Valor do pacote completo', 'money'], ['pack_limit', 'Até quantas fotos (0 = todas)', 'number'], ['pack_extra_cents', 'Foto adicional (cada) acima do limite', 'money'],
+  ['price_all_event_cents', 'Valor do pacote completo', 'money'], ['pack_limit', 'Até quantas fotos (0 = todas)', 'number'], ['pack_extra_cents', 'Foto adicional (cada)', 'money'],
   ['late_after_days', 'Dias com esse valor', 'number'], ['price_all_late_cents', 'Valor do pacote depois desse prazo', 'money'], ['price_box_cents', 'Pacote do box', 'money'],
   ['Datas das vendas (horário de Brasília)'],
   ['published_at', 'Fotos publicadas em (conta o prazo acima)', 'datetime', true], ['sales_end', 'Encerramento das vendas', 'datetime', true], ['sales_days', 'Ou: dias de venda após publicar (0 = não usar)', 'number'],
@@ -373,21 +374,21 @@ async function lp() {
   athletesCache = d.athletes; if (ev.brandText) brandText = ev.brandText;
   $('photos').innerHTML = `<h2>Fotos (${d.total} publicadas)</h2>
     <p class="muted" style="font-size:13px;margin-bottom:14px">Suba a pasta do evento: dentro dela, uma subpasta por atleta (com o nome dele; "Ana + Bruno" para dois atletas) e uma subpasta chamada <b>Geral</b> para as fotos sem atleta. As fotos Gerais aparecem na galeria de todos os atletas. A original fica privada e a vitrine sai com marca d'água.</p>
-    <div id="stor" class="box" style="margin:0 0 16px">Medindo o espaço...</div>
+    <div id="stor" class="box" style="margin:18px 0 26px;padding:16px 18px">Medindo o espaço...</div>
     <label>Escolha a pasta do evento</label><input type="file" id="folder" webkitdirectory multiple>
-    <details style="margin-top:12px"><summary class="muted" style="cursor:pointer;font-size:13px">Ou envie fotos soltas (vão para a Triagem, onde você diz de quem são)</summary>
+    <details style="margin-top:20px"><summary class="muted" style="cursor:pointer;font-size:13px">Ou envie fotos soltas (vão para a Triagem, onde você diz de quem são)</summary>
       <label>Escolha as fotos (JPG)</label><input type="file" id="files" accept="image/jpeg" multiple>
     </details>
-    <label style="display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:13px;color:var(--ink)"><input type="checkbox" id="faces-on" checked style="margin-top:3px"><span>Preparar a busca por selfie (calcula os rostos de cada foto neste computador; deixa o envio mais lento)</span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;margin-top:22px;font-size:13px;color:var(--ink)"><input type="checkbox" id="faces-on" checked style="margin-top:3px"><span>Preparar a busca por selfie (calcula os rostos de cada foto neste computador; deixa o envio mais lento)</span></label>
     <select id="faces-q" style="margin-top:8px"><option value="completa">Qualidade completa: acha também pessoas ao fundo e de longe (mais lento)</option><option value="rapida">Qualidade rápida: só rostos maiores</option></select>
-    <button class="full" id="up" style="margin-top:12px">Enviar fotos</button>
+    <button class="full" id="up" style="margin-top:20px">Enviar fotos</button>
     <div id="uplog" class="muted" style="font-size:13px;margin-top:12px;white-space:pre-line"></div>
     <div id="fx" class="box" style="margin-top:14px;display:none"></div>
-    <details style="margin-top:14px"><summary class="muted" style="cursor:pointer;font-size:13px">Refazer os rostos das fotos já enviadas (sem enviar de novo)</summary>
+    <details style="margin-top:22px"><summary class="muted" style="cursor:pointer;font-size:13px">Refazer os rostos das fotos já enviadas (sem enviar de novo)</summary>
       <p class="muted" style="font-size:12.5px;margin:8px 0">Escolha de novo a pasta com as fotos originais deste computador. O painel acha cada foto pelo nome do arquivo e recalcula os rostos com a qualidade escolhida acima. Não envia nada de novo.</p>
       <input type="file" id="redo-folder" webkitdirectory multiple><button class="small" id="redo-go" style="margin-top:8px">Refazer rostos</button><div id="redo-log" class="muted" style="font-size:12.5px;margin-top:6px;white-space:pre-line"></div>
     </details>
-    <h2 style="margin-top:30px">Fotos enviadas</h2>
+    <h2 style="margin-top:48px;padding-top:28px;border-top:1px solid var(--line)">Fotos enviadas</h2>
     <select id="pm-ath"><option value="">Escolha o atleta para ver as fotos</option><option value="todas">Todas as fotos</option><option value="geral">Fotos gerais (sem atleta)</option>${d.athletes.map(a => `<option value="${a.id}">${esc(a.name)} (${a.n})</option>`).join('')}</select>
     <div id="pm-bar" class="row" style="margin-top:12px"></div>
     <div id="pm-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:14px"></div>`;
