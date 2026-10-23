@@ -69,6 +69,10 @@ section.s{padding:52px 0 0}
 .foot{background:var(--ink);color:#cfcfca;padding:34px 0;margin-top:56px;font-size:14px}
 .foot .page{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap;align-items:center}
 .foot .logo{color:#fff}.foot .logo b{color:var(--lime);font-weight:400}.foot a{color:#fff}
+.fsub{margin-top:6px;font-size:14px;color:#bdbdb7}
+.fbtns{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.foot .hb{background:var(--lime);color:var(--ink);height:46px}
+.foot .fig{text-decoration:underline;text-underline-offset:4px;font-weight:700}
 .narrow{max-width:620px}
 .card.hl{border:2px solid var(--ink)}
 .namecard{border:2px solid var(--ink);border-radius:26px;padding:28px;display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center}
@@ -137,7 +141,7 @@ const packCards = (L, price) => `<div class="pc hot"><span class="bdg">Pacote co
 
 const steps = (items) => `<section class="s"><div class="page"><div class="ey">Passo a passo</div><h2 class="h2s">Como <em>funciona</em></h2>
   <div class="steps3">${items.map((x, i) => `<div class="st"><div class="n">${i + 1}</div><h3>${x[0]}</h3><p>${x[1]}</p></div>`).join('')}</div></div></section>`;
-const footer = (e) => `<footer class="foot"><div class="page">${logo}<div>Fotografia esportiva</div><div><a href="https://wa.me/${e.whatsapp}" target="_blank">WhatsApp</a>${e.instagram ? ' · <a href="https://instagram.com/' + encodeURIComponent(e.instagram) + '" target="_blank">Instagram</a>' : ''}</div></div></footer>`;
+const footer = (e) => `<footer class="foot"><div class="page"><div>${logo}<div class="fsub">Entre em contato por aqui</div></div><div class="fbtns"><a class="hb" href="https://wa.me/${e.whatsapp}" target="_blank">WhatsApp para contato</a>${e.instagram ? '<a class="fig" href="https://instagram.com/' + encodeURIComponent(e.instagram) + '" target="_blank">Instagram</a>' : ''}</div></div></footer>`;
 const have = () => `<div class="page"><div class="have"><div><div class="ey">Já comprou?</div><h2>Acesse suas fotos</h2><p class="sub" style="margin-top:4px">Entre com o seu WhatsApp e a senha que você criou.</p></div><a class="hb" href="acesso.html">Já comprei →</a></div></div>`;
 
 function hero(e, title, lead, btns) {
