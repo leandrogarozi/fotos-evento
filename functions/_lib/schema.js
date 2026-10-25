@@ -6,6 +6,8 @@ const DDL = [
   `CREATE INDEX IF NOT EXISTS idx_pa_athlete ON photo_athletes(athlete_id)`,
   `CREATE TABLE IF NOT EXISTS photo_faces (photo_id TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE, n INTEGER NOT NULL, vec TEXT NOT NULL, PRIMARY KEY (photo_id, n))`,
   `CREATE TABLE IF NOT EXISTS order_photos (order_id TEXT NOT NULL REFERENCES orders(id), photo_id TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE, PRIMARY KEY (order_id, photo_id))`,
+  `CREATE TABLE IF NOT EXISTS favorites (id TEXT PRIMARY KEY, event_id INTEGER NOT NULL DEFAULT 1, whatsapp TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', pin_salt TEXT NOT NULL, pin_hash TEXT NOT NULL, token TEXT NOT NULL, athlete_id INTEGER, photo_ids TEXT NOT NULL DEFAULT '[]', updated_at TEXT NOT NULL, UNIQUE (event_id, whatsapp))`,
+  `CREATE INDEX IF NOT EXISTS idx_fav_token ON favorites(token)`,
   `CREATE TABLE IF NOT EXISTS access_attempts (wpp TEXT PRIMARY KEY, fails INTEGER NOT NULL DEFAULT 0, locked_until TEXT)`,
   `CREATE TABLE IF NOT EXISTS events (id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL UNIQUE, name TEXT NOT NULL, is_main INTEGER NOT NULL DEFAULT 0, archived INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS event_config (event_id INTEGER NOT NULL, key TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (event_id, key))`,

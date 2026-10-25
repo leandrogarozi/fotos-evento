@@ -44,6 +44,7 @@
 
 <div class="bar" id="bar" style="display:none"><div class="in">
   <div id="msg"></div>
+  <div id="favrow" style="display:none;font-size:13px;margin:0 2px 8px"></div>
   <div class="line"><div class="tot"><small id="cnt"></small><span id="total">R$ 0</span></div>
   <button class="go" id="fin" disabled>Finalizar</button></div>
 </div></div>
@@ -89,9 +90,15 @@ const KEY = (X ? 'selx:' + X : 'sel:' + A);
 let claimMax = 0; // 0 = sem limite
 let ev, ids = [], sel = new Set(), quote = null, idx = 0, mode = 'cart', qt;
 
-const save = () => { if (CLAIM) return; try { localStorage.setItem(KEY, JSON.stringify([...sel])); } catch (_) {} };
+const save = () => { if (CLAIM) return; try { localStorage.setItem(KEY, JSON.stringify([...sel])); } catch (_) {} if (window.Fav && !X) Fav.sync(E, [...sel], A); };
 const load = () => { if (CLAIM) return []; try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (_) { return []; } };
 
+function openFavs() {
+  Fav.openOpen({ e: E, onLoaded: (d) => {
+    const a = Number(d.athleteId) || 0; try { localStorage.setItem('sel:' + a, JSON.stringify(d.ids)); } catch (_) {}
+    location.href = 'galeria.html?' + (a ? 'a=' + a + '&' : '') + 'fav=1' + eand;
+  } });
+}
 function header() {
   const ath = ev.athletes.find((a) => a.id === A);
   const first = ath ? ath.name.split(' ')[0] : '';
@@ -106,7 +113,9 @@ function header() {
       ${!X && ath && dl.until ? `<div class="pack"><b>Pacote completo${ev.packLimit ? ' (até ' + ev.packLimit + ' fotos)' : ''}</b><div class="big">${reais(ev.allPrice)}</div><small>${ev.packLimit ? 'Foto adicional: ' + reais(ev.packExtra) + ' cada. ' : ''}Vale até ${fmt(dl.until)}; depois, ${reais(dl.next)}.</small></div>` : ''}
     </div>` : ''}
     ${(ev.faceEnabled || TESTE) && !CLAIM && !X ? (ath && !tagged.size && !R ? `<div class="faceask"><div><b>Ainda não separamos fotos pelo seu nome</b><div class="sm2">Tire uma selfie e a gente localiza as suas fotos automaticamente. No celular abre a câmera da frente; no computador usa a webcam, ou você escolhe uma foto sua.</div></div><button class="go" id="face-again">Buscar pelo meu rosto</button></div>` : '<button class="light small" id="face-again" style="margin-top:14px">Buscar pelo meu rosto</button>') : ''}
+    ${!CLAIM && !X ? '<button class="ghost small" id="fav-open" style="margin:14px 0 0 8px">♡ Minhas favoritas salvas</button>' : ''}
     <div id="grid"></div>`;
+  if ($('fav-open')) $('fav-open').onclick = openFavs;
   if ($('face-again')) $('face-again').onclick = () => Rosto.open({ e: E, athletes: ev.athletes, athleteId: A, onDone: (f, a, m) => { try { sessionStorage.setItem('rosto:' + (E || 'principal'), JSON.stringify({ ids: f, maybe: m || [] })); } catch (_) {} location.href = 'galeria.html?' + (a ? 'a=' + a + '&' : '') + 'r=1' + eand; } });
   $('grid').innerHTML = secs.map((s) => `${s.title ? `<div class="sect">${s.title} (${s.ids.length})</div>` : ''}<div class="grid">${s.ids.map((id) => `<div class="ph" data-id="${id}"><img src="/img/${id}" loading="lazy" alt="" draggable="false"><button class="heart" aria-label="Escolher foto">♡</button></div>`).join('')}</div>`).join('');
   $('grid').querySelectorAll('.ph').forEach((el) => {
@@ -123,6 +132,12 @@ function paint() {
 }
 function toggle(id) { sel.has(id) ? sel.delete(id) : sel.add(id); save(); paint(); requote(); }
 
+function drawFav(n) {
+  const el = $('favrow'); if (!el || CLAIM || X) return;
+  el.style.display = n ? '' : 'none';
+  el.innerHTML = Fav.has(E) ? '<span class="muted">✓ Favoritas salvas, atualizadas sozinhas.</span>' : '<button class="ghost small" id="favsave">♡ Salvar minhas favoritas para continuar depois</button>';
+  if ($('favsave')) $('favsave').onclick = () => Fav.openSave({ e: E, ids: [...sel], A, onSaved: () => drawFav(sel.size) });
+}
 function requote() {
   clearTimeout(qt); qt = setTimeout(async () => {
     if (CLAIM) {
@@ -135,7 +150,7 @@ function requote() {
     const n = sel.size;
     $('bar').style.display = ids.length ? '' : 'none';
     $('cnt').textContent = n ? `${n} foto${n > 1 ? 's' : ''}` : 'Nenhuma foto escolhida';
-    $('fin').disabled = !n;
+    $('fin').disabled = !n; drawFav(n);
     if (!n) { $('total').textContent = reais(0); $('msg').innerHTML = (X ? `<div class="msg soft">Toque no coração das fotos que quer levar a mais. Cada foto adicional custa ${reais(ev.extraUnit)}.</div>` : '<div class="msg soft">Toque no coração para escolher suas fotos.</div>'); quote = null; return; }
     const r = await (await fetch(`/api/quote?n=${n}${A ? '&athlete=' + A : ''}${A && [...sel].some((id) => !tagged.has(id)) ? '&g=1' : ''}${X ? '&x=1' : ''}${eand}`)).json();
     quote = r; $('total').textContent = reais(r.total);
@@ -216,6 +231,11 @@ Promise.all([fetch('/api/event' + eq).then((r) => r.json()), fetch('/api/photos?
     secs = [{ title: (foundOnly.length || maybeOnly.length || general.length) ? 'Suas fotos' : '', ids: p.photos }, { title: 'Encontradas pela sua selfie', ids: foundOnly }, { title: 'Talvez sejam você', ids: maybeOnly }, { title: 'Fotos gerais do evento', ids: general }].filter((s) => s.ids.length);
   } else if (R && (faceIds.length || maybeIds.length)) { const okIds = new Set(p.photos); secs = [{ title: maybeIds.length ? 'Parecem você' : '', ids: faceIds.filter((id) => okIds.has(id)) }, { title: 'Talvez sejam você', ids: maybeIds.filter((id) => okIds.has(id) && !faceIds.includes(id)) }].filter((s) => s.ids.length); }
   else secs = [{ title: '', ids: p.photos }];
+  { // fotos marcadas (inclusive as salvas em favoritas) que não estão nas seções acima continuam na galeria
+    const valid = new Set(A && all ? all.photos : p.photos), have = new Set(secs.flatMap((s) => s.ids));
+    const extra = load().filter((id) => valid.has(id) && !have.has(id));
+    if (extra.length && !CLAIM && !X) secs.push({ title: 'Fotos que você marcou', ids: extra });
+  }
   ids = secs.flatMap((s) => s.ids);
   if (X && ped) { const own = new Set((ped.photos || []).map((x) => x.id)); ids = ids.filter((id) => !own.has(id)); } claimMax = e.claimMax || 0; sel = new Set(CLAIM ? ((ped && ped.claimed) || []).filter((id) => ids.includes(id)) : load().filter((id) => ids.includes(id)));
   document.title = 'Fotos: ' + e.eventName;
@@ -233,4 +253,4 @@ Promise.all([fetch('/api/event' + eq).then((r) => r.json()), fetch('/api/photos?
   if (!ids.length) { $('root').innerHTML = `<div class="eyebrow">${esc(e.eventName)}</div><h1>Em <em>breve</em></h1><p class="lead">As fotos ainda não foram publicadas. Volte em breve, elas aparecem aqui assim que estiverem prontas.</p>`; return; }
   header(); requote();
 }).catch(() => { $('root').innerHTML = '<p class="err" style="margin-top:40px">Não consegui carregar. Recarregue a página.</p>'; });
-</script><script src="pin.js"></script><script src="txt.js"></script><script src="rosto.js"></script></body></html>
+</script><script src="pin.js"></script><script src="txt.js"></script><script src="rosto.js"></script><script src="fav.js"></script></body></html>

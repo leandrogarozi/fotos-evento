@@ -5,7 +5,7 @@ import { DatabaseSync } from 'node:sqlite';
 const FIXED = Date.parse('2026-10-22T15:00:00Z');
 Date.now = () => FIXED + Math.round(performance.now());
 
-export const ALL_MIGRATIONS = ['0001_init.sql', '0002_atletas.sql', '0003_fotos.sql', '0004_acesso.sql', '0005_pin_enc.sql', '0006_triagem.sql', '0007_eventos.sql', '0008_pacote_limite.sql', '0009_rostos.sql', '0010_rosto_tamanho.sql'];
+export const ALL_MIGRATIONS = ['0001_init.sql', '0002_atletas.sql', '0003_fotos.sql', '0004_acesso.sql', '0005_pin_enc.sql', '0006_triagem.sql', '0007_eventos.sql', '0008_pacote_limite.sql', '0009_rostos.sql', '0010_rosto_tamanho.sql', '0011_favoritas.sql'];
 export function makeDB(files = ALL_MIGRATIONS) {
   const db = new DatabaseSync(':memory:');
   for (const f of files) db.exec(readFileSync(new URL('../migrations/' + f, import.meta.url), 'utf8'));

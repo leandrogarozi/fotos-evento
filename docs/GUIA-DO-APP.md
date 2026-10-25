@@ -238,3 +238,6 @@ O que seria novo: sessão por cliente (um "evento" por ensaio, com cota COM/SEM 
 ## Busca por selfie em eventos grandes
 - Cada requisição do plano grátis da Cloudflare tem ~10 ms de CPU. A busca compara os rostos em **fatias de 2.000** (`off`/`lim` em `POST /api/rosto`), que a página pede em paralelo e junta no celular. Cada fatia leva ~1 ms de conta (a comparação para cedo quando o rosto já está longe). Testado com 15.000 rostos.
 - Resultado: "parecem você" (ids) e "talvez" (maybe), cada um com a distância. Os testes usam relógio fixo (`test/helpers.js`).
+
+## Favoritas salvas
+- Na galeria, a pessoa marca fotos (coração) e toca em "Salvar minhas favoritas": nome + WhatsApp + senha (4 a 6 números). A lista (só os ids das fotos) fica no servidor (`favorites`, migração 0011) e se atualiza sozinha a cada marcação (token guardado no aparelho). Em outro aparelho: "Minhas favoritas" (na galeria e no fim da página inicial) com WhatsApp + senha. 5 erros de senha bloqueiam por 15 min. Não é compra: só guarda a seleção.

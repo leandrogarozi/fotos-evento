@@ -93,6 +93,7 @@ section.s{padding:52px 0 0}
 <div id="root"></div>
 <script src="pin.js"></script>
 <script src="rosto.js"></script>
+<script src="fav.js"></script>
 <script src="txt.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -142,7 +143,7 @@ const packCards = (L, price) => `<div class="pc hot"><span class="bdg">Pacote co
 const steps = (items) => `<section class="s"><div class="page"><div class="ey">Passo a passo</div><h2 class="h2s">Como <em>funciona</em></h2>
   <div class="steps3">${items.map((x, i) => `<div class="st"><div class="n">${i + 1}</div><h3>${x[0]}</h3><p>${x[1]}</p></div>`).join('')}</div></div></section>`;
 const footer = (e) => `<footer class="foot"><div class="page"><div>${logo}<div class="fsub">Entre em contato por aqui</div></div><div class="fbtns"><a class="hb" href="https://wa.me/${e.whatsapp}" target="_blank">WhatsApp para contato</a>${faceOn(e) ? '<a class="fig" href="termo.html' + eq + '">Termo da selfie</a>' : ''}${e.instagram ? '<a class="fig" href="https://instagram.com/' + encodeURIComponent(e.instagram) + '" target="_blank">Instagram</a>' : ''}</div></div></footer>`;
-const have = () => `<div class="page"><div class="have"><div><div class="ey">Já comprou?</div><h2>Acesse suas fotos</h2><p class="sub" style="margin-top:4px">Entre com o seu WhatsApp e a senha que você criou.</p></div><a class="hb" href="acesso.html">Já comprei →</a></div></div>`;
+const have = () => `<div class="page"><div class="have"><div><div class="ey">Já comprou?</div><h2>Acesse suas fotos</h2><p class="sub" style="margin-top:4px">Entre com o seu WhatsApp e a senha que você criou.</p></div><div class="btns" style="margin:0"><a class="hb" href="acesso.html">Já comprei →</a><a class="hb o" id="fav-home" style="cursor:pointer">♡ Minhas favoritas</a></div></div></div>`;
 
 function hero(e, title, lead, btns) {
   const imgs = [1, 2, 3, 4].map((i) => `<picture><source media="(max-width:760px)" srcset="capa/m${i}.jpg"><img src="capa/${i}.jpg" alt="" ${i > 1 ? 'loading="lazy"' : ''} class="${i === 1 ? 'on' : ''}"></picture>`).join('');
@@ -239,6 +240,7 @@ function storeView(e) {
     </div></div></section>` + have() + footer(e);
   until = null; tickCd(); startSlides();
   $('h-name').onclick = () => scrollTo('nome');
+  if ($('fav-home')) $('fav-home').onclick = () => Fav.openOpen({ e: E, onLoaded: (d) => { const a = Number(d.athleteId) || 0; try { localStorage.setItem('sel:' + a, JSON.stringify(d.ids)); } catch (_) {} location.href = 'galeria.html?' + (a ? 'a=' + a + '&' : '') + 'fav=1' + eand; } });
   if (face) { $('h-face').onclick = () => openFace(e, 'cam'); $('selfie').onclick = () => openFace(e, 'cam'); $('selfie-up').onclick = () => openFace(e, 'up'); }
   $('see').onclick = () => { const a = $('athlete').value; if (a) location.href = 'galeria.html?a=' + a + eand; else $('athlete').focus(); };
   fetch('/api/photos?e=' + encodeURIComponent(E)).then((r) => r.json()).then((d) => {
