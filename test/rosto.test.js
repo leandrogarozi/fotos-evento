@@ -7,7 +7,7 @@ import * as faces from '../functions/api/admin/photo/[id]/faces.js';
 import * as aPhotos from '../functions/api/admin/photos.js';
 import * as login from '../functions/api/admin/login.js';
 import * as event from '../functions/api/event.js';
-import { packVec, unpackVec, dist } from '../functions/_lib/faces.js';
+import { packVec, unpackVec, dist, searchFaces } from '../functions/_lib/faces.js';
 
 const env = { DB: makeDB(), FOTOS: makeR2(), ADMIN_PASSWORD: 'segredo' };
 const req = (path, init) => new Request('https://fotos.test' + path, init);
@@ -84,5 +84,20 @@ test('rosto pequeno entra em "talvez", rosto grande não; largura vem do painel'
   assert.equal((await put(ids[2], [off(200)])).status, 200); // grande: 0,56 já passa de 0,50+0,05
   const r = await (await rosto.onRequestPost({ request: post('/api/rosto', { d: base }), env: env2 })).json();
   assert.deepEqual(r.ids, [ids[0]]);
-  assert.deepEqual(r.maybe, [ids[1]]);
+  assert.deepEqual(r.maybe.map((x) => x[0]), [ids[1]]);
+});
+
+test('muitos rostos: a busca em fatias acha rosto que está na 2ª fatia e a soma das fatias bate com a busca completa', async () => {
+  const env3 = { DB: makeDB(), FOTOS: makeR2() };
+  const target = vec();
+  for (let i = 0; i < 4300; i++) {
+    const id = 'ph' + String(i).padStart(5, '0');
+    await env3.DB.prepare("INSERT INTO photos (id, filename, has_orig, has_prev, created_at) VALUES (?, ?, 1, 1, 'x')").bind(id, id).run();
+    await env3.DB.prepare('INSERT INTO photo_faces (photo_id, n, vec, w) VALUES (?, 0, ?, 90)').bind(id, packVec(i === 3100 ? near(target, 0.01) : vec())).run();
+  }
+  const slice = async (off) => (await rosto.onRequestPost({ request: post('/api/rosto', { d: target, off, lim: 2000 }), env: env3 })).json();
+  const a = await slice(0), b = await slice(2000), c = await slice(4000);
+  assert.equal(a.total, 4300); assert.deepEqual(a.sure, []); assert.deepEqual(c.sure, []);
+  assert.deepEqual(b.sure.map((x) => x[0]), ['ph03100']);
+  assert.deepEqual((await searchFaces(env3, 1, Float32Array.from(target), 0.5)).ids, ['ph03100']);
 });

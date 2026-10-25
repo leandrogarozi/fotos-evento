@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 
+// Relógio fixo (22/10/2026): os testes não dependem do dia em que rodam (pré-venda padrão termina em 24/10).
+const FIXED = Date.parse('2026-10-22T15:00:00Z');
+Date.now = () => FIXED + Math.round(performance.now());
+
 export const ALL_MIGRATIONS = ['0001_init.sql', '0002_atletas.sql', '0003_fotos.sql', '0004_acesso.sql', '0005_pin_enc.sql', '0006_triagem.sql', '0007_eventos.sql', '0008_pacote_limite.sql', '0009_rostos.sql', '0010_rosto_tamanho.sql'];
 export function makeDB(files = ALL_MIGRATIONS) {
   const db = new DatabaseSync(':memory:');

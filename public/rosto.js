@@ -126,8 +126,16 @@
         const faces = await describe(snap);
         if (!faces.length) { fallback('Não achei um rosto nessa foto. Tente de novo, de frente e com mais luz.'); return; }
         say('Buscando nas fotos do evento...');
-        const r = await fetch('/api/rosto', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ e: opt.e || '', d: faces[0].d }) });
-        const d = await r.json(); if (!r.ok) throw new Error(d.error || 'Erro');
+        // A busca é feita em fatias de 2.000 rostos, pedidas em paralelo (cada requisição tem tempo curto no servidor).
+        const post = async (off) => { const r = await fetch('/api/rosto', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ e: opt.e || '', d: faces[0].d, off, lim: 2000 }) }); const j = await r.json(); if (!r.ok) throw new Error(j.error || 'Erro'); return j; };
+        const first = await post(0), parts = [first], offs = [];
+        for (let o = 2000; o < (first.total || 0); o += 2000) offs.push(o);
+        say(offs.length ? 'Buscando em muitas fotos, isso pode levar alguns segundos...' : 'Buscando nas fotos do evento...');
+        (await Promise.allSettled(offs.map(post))).forEach((x) => { if (x.status === 'fulfilled') parts.push(x.value); });
+        const sure = new Map(), may = new Map();
+        for (const p of parts) { for (const [id, dd] of p.sure) if (dd < (sure.get(id) ?? 9)) sure.set(id, dd); for (const [id, dd] of p.maybe) if (dd < (may.get(id) ?? 9)) may.set(id, dd); }
+        const top = (m, n) => [...m].sort((a, b) => a[1] - b[1]).slice(0, n).map((x) => x[0]);
+        const d = { ids: top(sure, 300), maybe: top(may, 120 + sure.size).filter((id) => !sure.has(id)).slice(0, 120) };
         if (!d.ids.length && !(d.maybe || []).length) { fallback('Não achamos fotos suas pelo rosto.' + (athleteId ? '' : ' Escolha seu nome na lista acima e busque de novo, ou veja todas as fotos.')); return; }
         close(); opt.onDone(d.ids, athleteId, d.maybe || []);
       } catch (e) {
