@@ -511,7 +511,14 @@ async function startUpload() {
     const ids = folder.split('+').map(n => athletesCache.find(a => norm(a.name) === norm(n))).filter(Boolean).map(a => a.id);
     ids.length ? jobs.push({ f, ids }) : skipped.push(f.webkitRelativePath + ' (pasta não bate com nenhum atleta)');
   });
-  const log = $('uplog'); if (!jobs.length) { log.textContent = 'Nada para enviar.\n' + skipped.join('\n'); return; }
+  // retomar: pula o que já foi enviado (mesmo nome de arquivo e mesmos atletas)
+  let already = 0;
+  try {
+    const have = new Map(); ((await api('photos?names=1')).names || []).forEach(r => have.set(r.filename, [...(have.get(r.filename) || []), r]));
+    const same = (j) => (have.get(j.f.name) || []).some(r => j.geral ? !r.aths.length : j.ids.every(id => r.aths.includes(id)));
+    for (let i = jobs.length - 1; i >= 0; i--) if (same(jobs[i])) { jobs.splice(i, 1); already++; }
+  } catch (_) { /* sem a lista, envia tudo */ }
+  const log = $('uplog'); if (!jobs.length) { log.textContent = (already ? `Tudo já foi enviado (${already} foto(s) já estão no site).` : 'Nada para enviar.') + '\n' + skipped.join('\n'); return; }
   if (wantFaces() && $('faces-q').value === 'completa') {
     try { const fa = await Rosto.loadLib(); if (fa.tf.getBackend() === 'cpu' && !confirm('Este navegador está sem aceleração de vídeo, então a qualidade COMPLETA vai ser muito lenta (minutos por foto).\n\nOK = continuar assim mesmo.\nCancelar = usar a qualidade rápida.')) $('faces-q').value = 'rapida'; } catch (_) {}
   }
@@ -520,7 +527,7 @@ async function startUpload() {
   const worker = async () => { while (q.length) { const j = q.shift(); log.textContent = `Enviando ${done + fails.length + 1} de ${jobs.length}: ${j.f.name}`;
     try { await sendOne(j.f, j.ids, j.geral, j.triaged); } catch (e) { try { await sendOne(j.f, j.ids, j.geral, j.triaged); } catch (e2) { fails.push(j.f.name + ' → ' + (e2 && e2.message || e2)); continue; } } done++; } };
   await Promise.all([worker(), worker()]);
-  log.textContent = `Pronto: ${done} enviada(s).` + (fails.length ? `\nFalharam:\n${fails.join('\n')}` : '') + (skipped.length ? `\nIgnoradas:\n${skipped.join('\n')}` : '');
+  log.textContent = `Pronto: ${done} enviada(s)` + (already ? `, ${already} já estavam no site (puladas)` : '') + '.' + (fails.length ? `\nFalharam:\n${fails.join('\n')}` : '') + (skipped.length ? `\nIgnoradas:\n${skipped.join('\n')}` : '');
   $('up').disabled = false; lp().then(() => { $('uplog').textContent = log.textContent; });
 }
 

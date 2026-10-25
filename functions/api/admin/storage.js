@@ -50,5 +50,17 @@ export async function onRequestPost({ request, env }) {
     for (let i = 0; i < stray.length; i += 500) await env.FOTOS.delete(stray.slice(i, i + 500).map(([id]) => prefix + id));
     files += stray.length; bytes += stray.reduce((s, x) => s + x[1], 0);
   }
-  return json({ ok: true, files, bytes });
+  // fotos que ficaram pela metade (envio interrompido: sem original ou sem vitrine) há mais de 30 min
+  const old = new Date(Date.now() - 30 * 60000).toISOString();
+  const half = (await env.DB.prepare('SELECT id FROM photos WHERE (has_orig = 0 OR has_prev = 0) AND created_at < ?').bind(old).all()).results.map((r) => r.id);
+  for (let i = 0; i < half.length; i += 100) {
+    const part = half.slice(i, i + 100), js = JSON.stringify(part);
+    await env.FOTOS.delete(part.flatMap((id) => [`orig/${id}`, `prev/${id}`]));
+    await env.DB.batch([
+      env.DB.prepare('DELETE FROM photo_athletes WHERE photo_id IN (SELECT value FROM json_each(?))').bind(js),
+      env.DB.prepare('DELETE FROM photo_faces WHERE photo_id IN (SELECT value FROM json_each(?))').bind(js),
+      env.DB.prepare('DELETE FROM photos WHERE id IN (SELECT value FROM json_each(?))').bind(js),
+    ]);
+  }
+  return json({ ok: true, files: files + half.length, bytes, halfDone: half.length });
 }

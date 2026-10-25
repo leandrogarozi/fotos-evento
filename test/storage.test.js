@@ -22,3 +22,22 @@ test('mede o espaço usado, por evento, e acha sobras sem foto no banco', async 
   const r2 = await (await storage.onRequestGet({ request: req('/s', { headers: H }), env })).json();
   assert.equal(r2.used, 500, 'depois de apagar, o uso diminui');
 });
+
+test('retomar envio: lista de nomes com atletas; limpeza de envios pela metade', async () => {
+  const photosApi = await import('../functions/api/admin/photos.js');
+  const { token } = await (await login.onRequestPost({ request: req('/l', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ password: 'segredo' }) }), env })).json();
+  const H = { authorization: 'Bearer ' + token };
+  await env.DB.prepare("INSERT INTO photos (id, filename, has_orig, has_prev, created_at) VALUES ('p1', 'IMG_1.jpg', 1, 1, 'x'), ('p2', 'IMG_2.jpg', 1, 1, 'x')").run();
+  await env.DB.prepare("INSERT INTO photo_athletes (photo_id, athlete_id) VALUES ('p1', 1), ('p1', 2)").run();
+  const r = await (await photosApi.onRequestGet({ request: req('/a?names=1', { headers: H }), env })).json();
+  const byId = Object.fromEntries(r.names.map((n) => [n.id, n]));
+  assert.deepEqual(byId.p1.aths.sort(), [1, 2]); assert.deepEqual(byId.p2.aths, []); assert.equal(byId.p1.filename, 'IMG_1.jpg');
+  // foto pela metade (sem original), antiga, com arquivo da vitrine solto
+  await env.DB.prepare("INSERT INTO photos (id, filename, has_orig, has_prev, created_at) VALUES ('meia', 'M.jpg', 0, 1, '2020-01-01T00:00:00Z')").run();
+  await env.FOTOS.put('prev/meia', new Uint8Array(300));
+  const c = await (await storage.onRequestPost({ request: req('/s', { method: 'POST', headers: { ...H, 'content-type': 'application/json' }, body: JSON.stringify({ action: 'limpar' }) }), env })).json();
+  assert.equal(c.halfDone, 1);
+  assert.equal(await env.DB.prepare("SELECT id FROM photos WHERE id = 'meia'").first(), null);
+  assert.equal(env.FOTOS.store.has('prev/meia'), false);
+  assert.ok(await env.DB.prepare("SELECT id FROM photos WHERE id = 'p1'").first(), 'foto completa fica');
+});

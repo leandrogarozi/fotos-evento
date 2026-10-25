@@ -16,7 +16,12 @@ export async function onRequestGet({ request, env }) {
   // Fotos prontas ainda sem os rostos calculados (busca por selfie). ?pendingFaces=1 devolve os ids.
   const pend = await env.DB.prepare('SELECT id FROM photos WHERE has_orig = 1 AND has_prev = 1 AND faces_done = 0 AND event_id = ? ORDER BY filename LIMIT 2000').bind(ev.id).all();
   let names;
-  if (new URL(request.url).searchParams.get('names')) names = (await env.DB.prepare('SELECT id, filename FROM photos WHERE has_orig = 1 AND has_prev = 1 AND event_id = ?').bind(ev.id).all()).results;
+  if (new URL(request.url).searchParams.get('names')) {
+    const rows = (await env.DB.prepare('SELECT id, filename FROM photos WHERE has_orig = 1 AND has_prev = 1 AND event_id = ?').bind(ev.id).all()).results;
+    const tags = (await env.DB.prepare('SELECT pa.photo_id, pa.athlete_id FROM photo_athletes pa JOIN photos p ON p.id = pa.photo_id WHERE p.event_id = ?').bind(ev.id).all()).results;
+    const by = new Map(); for (const t of tags) by.set(t.photo_id, [...(by.get(t.photo_id) || []), t.athlete_id]);
+    names = rows.map((r) => ({ id: r.id, filename: r.filename, aths: by.get(r.id) || [] }));
+  }
   return json({
     names,
     total: total.n,
