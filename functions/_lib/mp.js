@@ -13,7 +13,7 @@ function payerOf(order) {
   return p;
 }
 
-export async function createPreference(env, { order, title, origin }) {
+export async function createPreference(env, { order, title, origin, onlyPix }) {
   const base = {
     items: [{ id: order.id, title, description: title, quantity: 1, unit_price: order.amount_cents / 100, currency_id: 'BRL' }],
     external_reference: order.id,
@@ -21,6 +21,7 @@ export async function createPreference(env, { order, title, origin }) {
     back_urls: ['success', 'pending', 'failure'].reduce((o, k) => ({ ...o, [k]: `${origin}/pedido.html?t=${order.token}` }), {}),
     auto_return: 'approved',
     statement_descriptor: 'FOTOS EVENTO',
+    ...(onlyPix ? { payment_methods: { excluded_payment_types: [{ id: 'credit_card' }, { id: 'debit_card' }, { id: 'ticket' }] } } : {}),
   };
   const send = (payer) => fetch(`${API}/checkout/preferences`, { method: 'POST', headers: auth(env), body: JSON.stringify({ ...base, payer }) });
   let res = await send(payerOf(order));

@@ -67,7 +67,7 @@ export async function onRequestPost({ request, env }) {
 
   try {
     const pref = await createPreference(env, {
-      order: { ...order, amount_cents: amount, buyer_name: name, email, whatsapp }, title, origin: new URL(request.url).origin,
+      order: { ...order, amount_cents: amount, buyer_name: name, email, whatsapp }, title, origin: new URL(request.url).origin, onlyPix: Number(cfg.mp_exclude_cards) === 1,
     });
     return json({ token: order.token, url: pref.init_point, total: reais(amount) });
   } catch (e) {
@@ -108,7 +108,7 @@ async function extras(b, request, env) {
   try {
     const pref = await createPreference(env, {
       order: { ...order, amount_cents: amount, buyer_name: base.buyer_name, email: base.email, whatsapp: base.whatsapp },
-      title: `${photoIds.length} foto${photoIds.length > 1 ? 's' : ''} adicional${photoIds.length > 1 ? 'is' : ''} (${cfg.event_name})`, origin: new URL(request.url).origin,
+      title: `${photoIds.length} foto${photoIds.length > 1 ? 's' : ''} adicional${photoIds.length > 1 ? 'is' : ''} (${cfg.event_name})`, origin: new URL(request.url).origin, onlyPix: Number(cfg.mp_exclude_cards) === 1,
     });
     return json({ token: order.token, url: pref.init_point, total: reais(amount) });
   } catch (e) {

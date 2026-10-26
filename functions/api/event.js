@@ -32,6 +32,7 @@ export async function onRequestGet({ request, env }) {
     allPrice: allPrice(cfg, now),
     packLimit: packLimit(cfg, now),
     packExtra: packExtra(cfg, now),
+    pixOnly: Number(cfg.mp_exclude_cards) === 1,
     faceEnabled: Number(cfg.face_enabled) === 1,
     extraUnit: extraUnit(cfg, now),
     packLater: packPhase(cfg, false),

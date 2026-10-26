@@ -109,3 +109,12 @@ test('preferência do Mercado Pago leva nome, sobrenome, e-mail e telefone do co
   assert.deepEqual(lastPref.payer, { name: 'Maria', surname: 'da Silva', email: 'maria@x.com', phone: { area_code: '27', number: '999991234' } });
   assert.equal(lastPref.items[0].description.length > 3, true);
 });
+
+test('"só Pix" tira cartão de crédito e débito da preferência', async () => {
+  await cfg('mp_exclude_cards', 1);
+  await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 1, photoIds: ['f1'], name: 'Ana Souza', pin: '1234', email: 'ana@x.com', whatsapp: '27999990000' }), env });
+  assert.deepEqual(lastPref.payment_methods.excluded_payment_types.map((x) => x.id), ['credit_card', 'debit_card', 'ticket']);
+  await cfg('mp_exclude_cards', 0);
+  await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 1, photoIds: ['f1'], name: 'Ana Souza', pin: '1234', email: 'ana@x.com', whatsapp: '27999990000' }), env });
+  assert.equal(lastPref.payment_methods, undefined);
+});

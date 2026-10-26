@@ -64,6 +64,7 @@
     <label>Crie uma senha de 4 a 6 números</label><input class="pin" id="pin" type="password" inputmode="numeric" maxlength="6" required autocomplete="new-password" placeholder="Ex.: 1234">
     <div class="hint-small">Você usa essa senha com o seu WhatsApp para baixar as fotos depois. Anote.</div>
     <button class="go full" id="pay">Ir para o pagamento</button>
+    <div class="hint-small" id="payhint" style="text-align:center">Pix ou cartão. Se o cartão for recusado, pague por Pix, que costuma aprovar na hora.</div>
     <button type="button" class="ghost full" id="back" style="margin-top:10px">Voltar</button>
     <div class="err" id="err"></div>
   </form>
@@ -224,7 +225,7 @@ $('f').addEventListener('submit', async (x) => {
 
 Promise.all([fetch('/api/event' + eq).then((r) => r.json()), fetch('/api/photos?' + (A && !CLAIM ? 'athlete=' + A + '&' : '') + 'e=' + encodeURIComponent(E)).then((r) => r.json()), A && !CLAIM ? fetch('/api/photos?e=' + encodeURIComponent(E)).then((r) => r.json()) : Promise.resolve(null), CLAIM || X ? fetch('/api/pedido/' + encodeURIComponent(CLAIM || X)).then((r) => r.json()) : Promise.resolve(null)]).then(([e, p, all, ped]) => {
   if (e.error) { $('root').innerHTML = '<h1 style="margin-top:40px">Evento <em>não encontrado</em></h1>'; return; }
-  ev = e; tagged = new Set(A ? p.photos : []);
+  ev = e; if (e.pixOnly) $('payhint').textContent = 'Pagamento por Pix: o QR Code e o código aparecem na tela seguinte.'; tagged = new Set(A ? p.photos : []);
   if (A) {
     const foundOnly = faceIds.filter((id) => !tagged.has(id)), maybeOnly = maybeIds.filter((id) => !tagged.has(id) && !foundOnly.includes(id)), seen = new Set([...tagged, ...foundOnly, ...maybeOnly]);
     const general = (p.general || []).filter((id) => !seen.has(id));

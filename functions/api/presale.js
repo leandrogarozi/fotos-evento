@@ -39,7 +39,7 @@ export async function onRequestPost({ request, env }) {
 
   try {
     const pref = await createPreference(env, {
-      order, origin: new URL(request.url).origin,
+      order, origin: new URL(request.url).origin, onlyPix: Number(cfg.mp_exclude_cards) === 1,
       title: `Todas as fotos: ${athlete.name} (${cfg.event_name})`,
     });
     return json({ token: order.token, url: pref.init_point });

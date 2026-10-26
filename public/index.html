@@ -186,7 +186,8 @@ function presaleView(e) {
         <label>Seu e-mail</label><input id="email" type="email" required autocomplete="email" placeholder="seu melhor e-mail">
         <label>Crie uma senha de 4 a 6 números</label><input class="pin" id="pin" type="password" inputmode="numeric" maxlength="6" pattern="[0-9]{4,6}" required autocomplete="new-password" placeholder="Ex.: 1234">
         <div class="hint-small">Você usa essa senha com o seu WhatsApp para baixar as fotos depois. Anote.</div>
-        <button class="go full" id="go">Pagar com Pix ou cartão</button>
+        <button class="go full" id="go">${e.pixOnly ? 'Pagar com Pix' : 'Pagar com Pix ou cartão'}</button>
+        <div class="hint-small" style="text-align:center">${e.pixOnly ? 'O QR Code do Pix aparece na tela seguinte.' : 'Se o cartão for recusado, pague por Pix, que costuma aprovar na hora.'}</div>
         <div class="err" id="err"></div>
       </form>
     </div>
