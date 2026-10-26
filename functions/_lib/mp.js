@@ -3,20 +3,28 @@ import { hmacHex, safeEqual } from './util.js';
 const API = 'https://api.mercadopago.com';
 const auth = (env) => ({ Authorization: `Bearer ${env.MP_ACCESS_TOKEN}`, 'content-type': 'application/json' });
 
+// Dados completos do comprador (nome, sobrenome, e-mail, telefone) ajudam o antifraude do Mercado Pago a aprovar.
+function payerOf(order) {
+  const parts = String(order.buyer_name || '').trim().split(/\s+/), p = { name: parts[0] || '' };
+  if (parts.length > 1) p.surname = parts.slice(1).join(' ');
+  if (/^\S+@\S+\.\S+$/.test(order.email || '')) p.email = order.email;
+  let w = String(order.whatsapp || '').replace(/\D/g, ''); if (w.length > 11 && w.startsWith('55')) w = w.slice(2);
+  if (w.length === 10 || w.length === 11) p.phone = { area_code: w.slice(0, 2), number: w.slice(2) };
+  return p;
+}
+
 export async function createPreference(env, { order, title, origin }) {
-  const res = await fetch(`${API}/checkout/preferences`, {
-    method: 'POST',
-    headers: auth(env),
-    body: JSON.stringify({
-      items: [{ id: order.id, title, quantity: 1, unit_price: order.amount_cents / 100, currency_id: 'BRL' }],
-      payer: { name: order.buyer_name },
-      external_reference: order.id,
-      notification_url: `${origin}/api/webhook/mercadopago`,
-      back_urls: ['success', 'pending', 'failure'].reduce((o, k) => ({ ...o, [k]: `${origin}/pedido.html?t=${order.token}` }), {}),
-      auto_return: 'approved',
-      statement_descriptor: 'FOTOS EVENTO',
-    }),
-  });
+  const base = {
+    items: [{ id: order.id, title, description: title, quantity: 1, unit_price: order.amount_cents / 100, currency_id: 'BRL' }],
+    external_reference: order.id,
+    notification_url: `${origin}/api/webhook/mercadopago`,
+    back_urls: ['success', 'pending', 'failure'].reduce((o, k) => ({ ...o, [k]: `${origin}/pedido.html?t=${order.token}` }), {}),
+    auto_return: 'approved',
+    statement_descriptor: 'FOTOS EVENTO',
+  };
+  const send = (payer) => fetch(`${API}/checkout/preferences`, { method: 'POST', headers: auth(env), body: JSON.stringify({ ...base, payer }) });
+  let res = await send(payerOf(order));
+  if (res.status === 400) res = await send({ name: order.buyer_name }); // se o Mercado Pago recusar algum dado extra, tenta só com o nome
   const data = await res.json();
   if (!res.ok) {
     const cause = Array.isArray(data.cause) && data.cause[0] ? ' / ' + (data.cause[0].description || data.cause[0].code) : '';

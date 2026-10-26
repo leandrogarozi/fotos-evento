@@ -102,3 +102,10 @@ test('cotação na galeria: pacote + adicionais x pacotes avulsos', async () => 
   const ex = await (await quote.onRequestGet({ request: req('/api/quote?n=3&x=1'), env })).json();
   assert.equal(ex.total, 600);
 });
+
+test('preferência do Mercado Pago leva nome, sobrenome, e-mail e telefone do comprador', async () => {
+  const rr = await checkout.onRequestPost({ request: post('/api/checkout', { athleteId: 1, photoIds: ['f1'], name: 'Maria da Silva', pin: '1234', email: 'maria@x.com', whatsapp: '(27) 99999-1234' }), env });
+  assert.equal(rr.status, 200);
+  assert.deepEqual(lastPref.payer, { name: 'Maria', surname: 'da Silva', email: 'maria@x.com', phone: { area_code: '27', number: '999991234' } });
+  assert.equal(lastPref.items[0].description.length > 3, true);
+});
